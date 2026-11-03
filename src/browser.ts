@@ -37,7 +37,8 @@ export const approveOn = async (page: Page, o: Parameters<Approver>[0]): Promise
   const passwords = [...o.passwords];
   let used = passwords[0] ?? '';
   let tried = 0;
-  for (let steps = 0; steps < 12; steps++) {
+  for (let steps = 0; steps < 20; steps++) {
+    if (o.granted?.()) return { usedPassword: used };
     const step = await stepOf(page);
     if (step === 'done') return { usedPassword: used };
     if (step === 'credentials') {
@@ -64,6 +65,9 @@ export const approveOn = async (page: Page, o: Parameters<Approver>[0]): Promise
       // An error above the sign-in form is handled as a wrong password; anywhere else it stops.
       if (await visible(page, '#username')) continue;
       throw new RunRefused(`The sign-in page stopped ${o.username}: ${await errorText(page)}.`);
+    } else if (o.granted) {
+      // A page with nothing to answer, such as the last one after the grant: the code may be granted already.
+      await page.waitForTimeout(1000);
     } else {
       throw new RunRefused(`The sign-in page showed something the run doesn't know how to answer, at ${page.url().split('?')[0]}.`);
     }

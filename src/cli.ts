@@ -82,6 +82,7 @@ const run = async (a: Args) => {
       seed: one(a, 'seed') ? Number(one(a, 'seed')) : undefined,
       run: one(a, 'run'),
       outDir: one(a, 'out'),
+      workDir: one(a, 'workdir'),
       suiteCommit: commit(),
     });
     return result.summary.verdict.passed ? 0 : 1;

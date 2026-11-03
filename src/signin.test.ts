@@ -42,6 +42,19 @@ describe('signing a persona in', () => {
     expect(openCredentials(path).candidates('t-bo', 'temp')).toEqual([next, 'temp']);
   });
 
+  it('takes the token when the code is granted even if the page walk then went wrong, and stops when it never is', async () => {
+    const credentials = openCredentials(join(tempDir(), 'c.json'));
+    const failing: Approver = async () => {
+      throw new Error('an odd last page');
+    };
+    const granted = deviceRealm({ pendingFirst: 1 });
+    expect((await signIn({ issuer: ISSUER, username: 't-cy', credentials, temporaryPassword: 'x', approve: failing, fetchImpl: granted.impl, wait: async () => {} })).access_token).toBe('a1');
+    const never = deviceRealm({ pendingFirst: 1000 });
+    await expect(signIn({ issuer: ISSUER, username: 't-cy', credentials, temporaryPassword: 'x', approve: failing, fetchImpl: never.impl, wait: async () => {} })).rejects.toThrow(/odd last page/);
+    // Two more polls after the walk failed, then it stops.
+    expect(never.calls.filter((c) => c.path.endsWith('/token')).length).toBeLessThanOrEqual(4);
+  });
+
   it('says why when the realm has no client for scripts', async () => {
     const { impl } = fakeFetch({});
     await expect(signIn({ issuer: ISSUER, username: 't-ann', credentials: openCredentials(join(tempDir(), 'c.json')), temporaryPassword: 'x', approve: async () => ({ usedPassword: 'x' }), fetchImpl: impl })).rejects.toThrow(/platform-cli client/);
