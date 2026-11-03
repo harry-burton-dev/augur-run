@@ -26,8 +26,15 @@ export type ScenarioContext = {
   /** The personas playing each part the scenario named in `needs`, each with their own API client. */
   parts: Record<string, Part>;
   personas: Persona[];
+  /** An API client for any persona, for a scenario that goes through the whole cast. */
+  as: (persona: Persona) => Api;
   cast: Cast;
   seeded: SeedLedger;
+  /**
+   * Asks `probe` again every `everyMs` until it says yes or `withinMs` runs out, for something AUGUR
+   * promises within a time, such as access gone within 5 minutes. Returns the last answer and how long it took.
+   */
+  eventually: <T>(probe: () => Promise<{ ok: boolean; value: T }>, o: { withinMs: number; everyMs?: number }) => Promise<{ ok: boolean; value: T; ms: number }>;
   /** Records a check. A failed check raises a ledger row (one per check, however often it fails). */
   check: (label: string, ok: boolean, detail?: { expected?: unknown; actual?: unknown; suggested?: LedgerClass }) => boolean;
   note: (text: string, data?: unknown) => void;
@@ -113,6 +120,16 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     scenario,
     parts,
     personas: deps.personas,
+    as: (p) => deps.apiFor(p, scenario.id),
+    eventually: async (probe, { withinMs, everyMs = 15_000 }) => {
+      const from = deps.now().getTime();
+      for (;;) {
+        const r = await probe();
+        const ms = deps.now().getTime() - from;
+        if (r.ok || ms + everyMs > withinMs) return { ...r, ms };
+        await deps.sleep(everyMs);
+      }
+    },
     cast: deps.cast,
     seeded: deps.seeded,
     random: deps.random,
