@@ -1,0 +1,19 @@
+{
+  // The suite runs from its TypeScript source on Node 22's type stripping, so nothing is built:
+  // `pnpm build` and `pnpm typecheck` only check types. Only syntax Node can strip is allowed.
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["src", "scenarios", "*.ts"]
+}

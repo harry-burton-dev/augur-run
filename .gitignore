@@ -1,0 +1,6 @@
+node_modules/
+*.tsbuildinfo
+.env
+# A run's working files: sign-in secrets and raw evidence. Only the exported summary goes in runs/.
+.run/
+.seed/

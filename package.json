@@ -1,0 +1,27 @@
+{
+  "name": "augur-run",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "description": "AUGUR's run suite: scripted synthetic use that proves a release on a real deployment (im-platform ADR 0050).",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc -p tsconfig.json",
+    "run-suite": "node src/cli.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.0.0",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.72.1",
+    "vitest": "^3.2.0"
+  }
+}
