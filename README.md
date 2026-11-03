@@ -26,7 +26,6 @@ pnpm lint && pnpm typecheck && pnpm test
 ```
 
 Node 22.18 or later runs the TypeScript as it is; there is no build step (decision 0001).
-<<<<<<< HEAD
 
 ## Running it
 
@@ -82,5 +81,3 @@ and why, and is reported as not available, never as passed.
 
 `pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR>` signs one person in and prints an access token, for a script such as the dry run that hands it
 to `pnpm seed` (`AUGUR_TOKEN`).
-=======
->>>>>>> origin/claude/project-thread-y24wax
