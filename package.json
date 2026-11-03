@@ -11,7 +11,11 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
+<<<<<<< HEAD
     "test": "vitest run",
+=======
+    "test": "vitest run --passWithNoTests",
+>>>>>>> origin/claude/project-thread-y24wax
     "build": "tsc -p tsconfig.json",
     "run-suite": "node src/cli.ts"
   },
@@ -23,8 +27,11 @@
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.72.1",
     "vitest": "^3.2.0"
+<<<<<<< HEAD
   },
   "dependencies": {
     "playwright": "1.56.1"
+=======
+>>>>>>> origin/claude/project-thread-y24wax
   }
 }
