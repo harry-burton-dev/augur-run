@@ -14,9 +14,10 @@ export const nightlyBackup: Scenario = {
   needs: [{ as: 'admin', role: 'admin' }],
   available: async (ctx) => {
     const r = await ctx.parts.admin!.api.get<Status>(PATHS.status);
-    return r.ok && r.body.backups
-      ? { ok: true }
-      : { ok: false, why: 'This deployment’s Status doesn’t report backups.', whoCanChange: 'A deployment admin, by running the backup container (im-platform docs/deploy.md).' };
+    if (!r.ok || !r.body.backups) return { ok: false, why: 'This deployment’s Status doesn’t report backups.', whoCanChange: 'A deployment admin, by running the backup container (im-platform docs/deploy.md).' };
+    // A fresh install's first backup is at its first 02:00 UTC; on the timeline, a missing one is a failure.
+    if (ctx.dry && !r.body.backups.lastBackup) return { ok: false, why: 'No backup has been taken on this install yet: its first is at 02:00 UTC.' };
+    return { ok: true };
   },
   run: async (ctx) => {
     const r = await ctx.parts.admin!.api.get<Status>(PATHS.status);

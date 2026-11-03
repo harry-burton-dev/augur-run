@@ -10,7 +10,7 @@ import { RunRefused } from './synthetic.ts';
 export type Tokens = { access_token: string; refresh_token?: string; expires_in?: number };
 
 /** Approves a device code on the sign-in page as this person. Says which password worked. */
-export type Approver = (o: { url: string; userCode: string; username: string; passwords: string[]; newPassword: string }) => Promise<{ usedPassword: string }>;
+export type Approver = (o: { url: string; userCode: string; username: string; passwords: string[]; newPassword: string; granted?: () => boolean }) => Promise<{ usedPassword: string }>;
 
 export type Fetch = typeof fetch;
 
@@ -76,17 +76,28 @@ export const signIn = async (o: {
   if (!start.ok) throw new RunRefused(`The sign-in service won't sign anyone in from a script (${start.status}). Its realm needs the ${clientId} client (im-platform docs/upgrade.md, "Sample data, where you allow it").`);
   const code = (await start.json()) as { device_code: string; user_code: string; verification_uri: string; verification_uri_complete?: string; interval?: number; expires_in?: number };
   const newPassword = credentials.propose(username);
-  const { usedPassword } = await approve({ url: code.verification_uri_complete ?? code.verification_uri, userCode: code.user_code, username, passwords, newPassword });
-  // The page asked for a new password only on a first sign-in; otherwise the one that worked stays.
+  // The page is walked while the token endpoint is asked, so the walk stops as soon as the code is granted,
+  // whatever the last page looks like.
+  let granted = false;
+  let approval: { usedPassword: string } | Error | undefined;
+  const approving = approve({ url: code.verification_uri_complete ?? code.verification_uri, userCode: code.user_code, username, passwords, newPassword, granted: () => granted }).then(
+    (r) => void (approval = r),
+    (err: unknown) => void (approval = err instanceof Error ? err : new Error(String(err))),
+  );
   let interval = (code.interval ?? 5) * 1000;
   const until = Date.now() + (code.expires_in ?? 300) * 1000;
-  // The approval is already given, so the first poll normally succeeds.
+  let pollsSinceFailure = 0;
   for (let first = true; Date.now() < until; first = false) {
     if (!first) await wait(interval);
+    // A walk that failed gets two more polls, in case the code was granted before the page went wrong.
+    if (approval instanceof Error && pollsSinceFailure++ >= 2) throw approval;
     const res = await fetchImpl(`${base}/token`, form({ grant_type: 'urn:ietf:params:oauth:grant-type:device_code', device_code: code.device_code, client_id: clientId }));
     const body = (await res.json().catch(() => ({}))) as Tokens & { error?: string };
     if (res.ok) {
-      credentials.worked(username, usedPassword);
+      granted = true;
+      await approving;
+      // The password that worked is kept; after a walk that went wrong, the one being set stays a candidate.
+      if (approval && !(approval instanceof Error)) credentials.worked(username, approval.usedPassword);
       return body;
     }
     if (body.error === 'authorization_pending') continue;
@@ -94,7 +105,8 @@ export const signIn = async (o: {
       interval += 5000;
       continue;
     }
-    throw new RunRefused(`${username}'s sign-in failed (${body.error ?? res.status}).`);
+    await approving;
+    throw approval instanceof Error ? approval : new RunRefused(`${username}'s sign-in failed (${body.error ?? res.status}).`);
   }
   throw new RunRefused(`${username}'s sign-in code ran out before it was granted.`);
 };
