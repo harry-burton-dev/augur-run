@@ -79,5 +79,12 @@ how often it happens across the 48 hours (once, every few minutes in the working
 time), and the goals it proves. A scenario that needs something the deployment doesn't have yet says so
 and why, and is reported as not available, never as passed.
 
+### An app's scenarios
+
+Each app's repository keeps its own scenarios in a `run/` module whose `index.ts` exports `scenarios`, in
+the shape of `src/scenario.ts`. They are run with `--scenarios ../augur-folio/run/index.ts`, and each gets
+a row in [traceability.md](traceability.md). Scenario ids are given out here, so two apps never take the
+same one: take the next free `RUN-nn` in the table.
+
 `pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR>` signs one person in and prints an access token, for a script such as the dry run that hands it
 to `pnpm seed` (`AUGUR_TOKEN`).
