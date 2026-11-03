@@ -56,6 +56,16 @@ state, with the personas' passwords beside them in `.run/<host>/credentials.json
 At the end it writes `runs/<run>/summary.json` and `report.md`: the verdict, every scenario's outcomes, the
 ledger and the calls, with no secret in them.
 
+## In CI
+
+Each pull request runs lint, types and the unit tests (about a minute). The **Dry run** workflow runs only
+when the suite itself changes (`src/`, `scenarios/`, `scripts/`, the lockfile), or by hand from Actions: it
+installs the newest AUGUR release fresh on the runner with im-platform's deploy test, seeds it, and runs
+every scenario once (`scripts/dry-run.sh`), about ten minutes. Its report is on the run's summary page, and
+the summary, report, ledger and evidence are kept as an artifact for 14 days. It needs the
+`IM_PLATFORM_READ_TOKEN` secret, a token that can read im-platform and its packages; without it the dry run
+is skipped with a warning.
+
 ## The ledger
 
 Every failed check, and every scenario that stops part way, raises a row in the run's ledger: one row per
