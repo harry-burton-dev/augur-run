@@ -1,6 +1,6 @@
 # 0001. The suite is TypeScript run from source on Node, tested with Vitest, and never released
 
-- **Status:** Proposed
+- **Status:** Accepted (Harry, 2026-11-04)
 - **Date:** 2026-11-03
 - **Decided by:** Harry
 - **Replaces:** none. Serves AUGUR's ADR 0050 (the proving run).
