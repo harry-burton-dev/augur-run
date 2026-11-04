@@ -75,6 +75,45 @@ export const approveOn = async (page: Page, o: Parameters<Approver>[0]): Promise
   throw new RunRefused(`${o.username}'s sign-in went round too many pages without finishing.`);
 };
 
+/** A page signed in to AUGUR as one persona, for a scenario that looks at what a person sees. */
+export type Browsing = { page: Page; close: () => Promise<void> };
+/** Opens AUGUR in a browser as a persona: the shell sends them to the sign-in page, and back once signed in. */
+export type Browse = (o: { url: string; username: string; passwords: string[] }) => Promise<Browsing>;
+
+const onSignInPage = (url: string) => /\/protocol\/openid-connect\/|\/login-actions\//.test(url);
+
+/**
+ * Walks the sign-in pages the shell sends a person to, with the passwords the run knows (best first), and
+ * returns once the browser is back on AUGUR. The persona has signed in once already, through the API, so
+ * their own password is chosen and no new one is asked for.
+ */
+export const signInOn = async (page: Page, o: Parameters<Browse>[0]): Promise<void> => {
+  const origin = new URL(o.url).origin;
+  await page.goto(o.url);
+  const passwords = [...o.passwords];
+  for (let steps = 0; steps < 10; steps++) {
+    // The shell sends the browser to the sign-in page from its own script, so give it a moment to go.
+    await page.waitForURL((u) => onSignInPage(u.href) || u.origin === origin, { waitUntil: 'domcontentloaded' });
+    if (!onSignInPage(page.url())) {
+      await page.waitForTimeout(500);
+      if (!onSignInPage(page.url())) return;
+    }
+    const step = await stepOf(page);
+    if (step === 'credentials' || (step === 'error' && (await visible(page, '#username')))) {
+      const pw = passwords.shift();
+      if (pw === undefined) throw new RunRefused(`None of the passwords the run knows for ${o.username} signs them in to AUGUR (${await errorText(page)}).`);
+      await page.fill('#username', o.username);
+      await page.fill('#password', pw);
+      await submit(page);
+    } else if (step === 'two-step') {
+      throw new RunRefused(`${o.username} is asked for a two-step code, which the run can't give yet. Two-step sign-in for sample admins arrives with the Account area (ADR 0038).`);
+    } else {
+      throw new RunRefused(`Signing ${o.username} in to AUGUR stopped on a page the run doesn't know how to answer, at ${page.url().split('?')[0]}.`);
+    }
+  }
+  throw new RunRefused(`${o.username}'s sign-in to AUGUR went round too many pages without finishing.`);
+};
+
 /** One browser for the whole run; each sign-in gets a clean context, so no cookie carries over. */
 export const browserApprover = (o: { executablePath?: string } = {}) => {
   let browser: Promise<Browser> | undefined;
@@ -87,8 +126,20 @@ export const browserApprover = (o: { executablePath?: string } = {}) => {
       await context.close();
     }
   };
+  const browse: Browse = async (args) => {
+    browser ??= chromium.launch({ headless: true, executablePath: o.executablePath });
+    const context = await (await browser).newContext();
+    try {
+      const page = await context.newPage();
+      await signInOn(page, args);
+      return { page, close: () => context.close() };
+    } catch (err) {
+      await context.close();
+      throw err;
+    }
+  };
   const close = async () => {
     if (browser) await (await browser).close();
   };
-  return { approve, close };
+  return { approve, browse, close };
 };

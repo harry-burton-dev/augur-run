@@ -89,6 +89,10 @@ how often it happens across the 48 hours (once, every few minutes in the working
 time), and the goals it proves. A scenario that needs something the deployment doesn't have yet says so
 and why, and is reported as not available, never as passed.
 
+Most scenarios go through the API as the persona. One that checks what a person sees, such as RUN-13's
+look at every app on a tablet, asks for `ctx.browse(persona)`: a page in the run's browser, signed in to
+AUGUR through the shell's own sign-in, closed when the scenario ends.
+
 ### An app's scenarios
 
 Each app's repository keeps its own scenarios in a `run/` module whose `index.ts` exports `scenarios`, in

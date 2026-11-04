@@ -65,3 +65,49 @@ describe.skipIf(!hasBrowser)('approving a code on the sign-in page', () => {
     }
   }, 30_000);
 });
+
+describe.skipIf(!hasBrowser)('opening AUGUR in a browser as a persona', () => {
+  let server: Server;
+  let base = '';
+  const AUTH = '/sso/realms/platform/protocol/openid-connect/auth';
+  const ACTION = '/sso/realms/platform/login-actions/authenticate';
+  const signInForm = (error = '') => login(error).replace('action="/login"', `action="${ACTION}"`);
+  beforeAll(async () => {
+    // A shell that sends anyone without a session to the sign-in page from its script, as AUGUR's does.
+    server = createServer((req, res) => {
+      let raw = '';
+      req.on('data', (c) => (raw += c));
+      req.on('end', () => {
+        res.setHeader('content-type', 'text/html');
+        const signedIn = req.headers.cookie?.includes('session=ok');
+        if (req.url === '/') return res.end(signedIn ? page('<div id="shell">AUGUR</div>') : page(`<script>setTimeout(() => location.assign('${AUTH}?client_id=platform-web'), 50)</script>`));
+        if (req.url?.startsWith(AUTH)) return res.end(signInForm());
+        if (req.url === ACTION) {
+          if (new URLSearchParams(raw).get('password') !== 'mine') return res.end(signInForm('Invalid username or password.'));
+          res.statusCode = 302;
+          res.setHeader('set-cookie', 'session=ok; Path=/');
+          res.setHeader('location', '/');
+          return res.end();
+        }
+        res.statusCode = 404;
+        res.end('');
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+  afterAll(() => new Promise<void>((r) => server.close(() => r())));
+
+  it('follows the shell to the sign-in page, tries the passwords it knows and comes back signed in', async () => {
+    const browser = browserApprover({ executablePath });
+    try {
+      const b = await browser.browse({ url: `${base}/`, username: 't-ann', passwords: ['old', 'mine'] });
+      expect(new URL(b.page.url()).pathname).toBe('/');
+      await expect(b.page.locator('#shell').textContent()).resolves.toBe('AUGUR');
+      await b.close();
+      await expect(browser.browse({ url: `${base}/`, username: 't-ann', passwords: ['nope'] })).rejects.toThrow(/None of the passwords.*signs them in to AUGUR/);
+    } finally {
+      await browser.close();
+    }
+  }, 30_000);
+});
