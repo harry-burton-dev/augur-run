@@ -30,7 +30,7 @@ until the work it names lands. **Elsewhere** is proved outside the run, in the p
 | 14 | The Inbox holds stateful items, apart from notifications; Home shows the counts | Run | RUN-10 | Waiting | |
 | 15 to 18 | Kit released on its own version; axe with no serious findings; picker search in place | CI | augur-kit and im-platform contract tests | Elsewhere | |
 | 19 | Design decisions recorded before the SDK 2.0 cut | Review | Decision register | Elsewhere | |
-| 20 | Every app shows the app frame layout; nothing is covered at tablet widths | Run | RUN-13 | Waiting | |
+| 20 | Every app shows the app frame layout; nothing is covered at tablet widths | Run | RUN-13 | Written | |
 | 22 | Settings schema matches compose, `.env.example` and docs; no deployment literals | CI | im-platform `check-settings` | Elsewhere | |
 | 23 | A deliberate fault alerts a deployment admin within 5 minutes, by notice and email (CUJ 4) | Run | RUN-12 | Waiting | |
 | 23 | Stopping Grafana, then the whole host, raises Backstage's late-report alert | Run (operator) | Recorded by the operator during the run | Elsewhere | |

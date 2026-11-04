@@ -76,6 +76,7 @@ const run = async (a: Args) => {
       seedLedgerPath: resolve(one(a, 'seed-ledger') ?? `../im-platform/.seed/${hostOf(gateway)}.json`),
       scenarios: all,
       approve: browser.approve,
+      browse: browser.browse,
       mode: one(a, 'dry') ? 'dry' : 'timeline',
       hours: Number(one(a, 'hours') ?? 48),
       peakPerSecond: Number(one(a, 'peak') ?? 5),

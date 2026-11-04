@@ -86,18 +86,6 @@ export const pending: Scenario[] = [
     issue: 'PER-220',
   }),
   waiting({
-    id: 'RUN-13',
-    title: 'Every app shows the app frame, uncovered, at tablet width',
-    goals: [20],
-    given: 'The shell and every installed app.',
-    when: 'A sample person opens each app in a browser at desktop and tablet widths.',
-    then: 'Each shows the app frame’s layout, and the floor gauge covers no content.',
-    cadence: { kind: 'once', afterMinutes: 30 },
-    needs: [{ as: 'anyone' }],
-    waitsOn: 'The one layout rule isn’t in every app yet.',
-    issue: 'alpha Goal 20',
-  }),
-  waiting({
     id: 'RUN-14',
     title: 'Activity shows before and after, and exports',
     goals: [12],

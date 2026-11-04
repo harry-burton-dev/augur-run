@@ -1,7 +1,9 @@
 // A scenario is one thing a person does with AUGUR, written from a user journey (Given, When, Then), with
 // the checks that say it worked. Each has a RUN-nn id and a row in traceability.md. Platform scenarios
 // live in scenarios/platform/; an app's live in its own repository's run/ module, in this same shape.
+import type { Page } from 'playwright';
 import type { Api } from './api.ts';
+import type { Browsing } from './browser.ts';
 import type { Outcome, Recorder } from './evidence.ts';
 import type { Ledger, LedgerClass } from './ledger.ts';
 import { castParts, describeNeed, type Need, type Persona } from './personas.ts';
@@ -45,6 +47,13 @@ export type ScenarioContext = {
   /** The dry run does every scenario once and doesn't wait: a scenario can shorten its waits. */
   dry: boolean;
   sleep: (ms: number) => Promise<void>;
+  /**
+   * A browser page signed in to AUGUR as the persona, for what a person sees rather than what the API
+   * answers. Closed when the scenario ends.
+   */
+  browse: (persona: Persona) => Promise<Page>;
+  /** Whether this run has a browser for `browse`. */
+  canBrowse: boolean;
 };
 
 export type Scenario = {
@@ -101,6 +110,8 @@ export type RunDeps = {
   saveState: () => void;
   dry: boolean;
   sleep: (ms: number) => Promise<void>;
+  /** Signs a persona in to AUGUR in a browser. A run without a browser leaves it out. */
+  browse?: (persona: Persona) => Promise<Browsing>;
 };
 
 /** Runs one scenario once: casts its parts, asks whether it's available, runs it, and records how it ended. */
@@ -116,6 +127,7 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
   const parts = Object.fromEntries(Object.entries(chosen).map(([as, persona]) => [as, { persona, api: deps.apiFor(persona, scenario.id) }]));
   const who = Object.values(chosen).map((p) => p.key);
   let failed = false;
+  const open: Browsing[] = [];
   const ctx: ScenarioContext = {
     scenario,
     parts,
@@ -137,6 +149,13 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     state: deps.state(scenario.id),
     dry: deps.dry,
     sleep: deps.sleep,
+    canBrowse: !!deps.browse,
+    browse: async (p) => {
+      if (!deps.browse) throw new Error('This run has no browser, so nothing can be looked at as a person sees it.');
+      const b = await deps.browse(p);
+      open.push(b);
+      return b.page;
+    },
     note: (text, data) => void deps.evidence.note({ scenario: scenario.id, text, data }),
     check: (label, ok, detail = {}) => {
       const e = deps.evidence.check({ scenario: scenario.id, check: label, ok, expected: detail.expected, actual: detail.actual, persona: who.join(',') });
@@ -156,5 +175,7 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     const message = (err as Error).message;
     deps.ledger.raise({ key: `${scenario.id}: stopped`, what: `${scenario.title} stopped part way: ${message}`, scenario: scenario.id, release: deps.release(), suggested: scenario.suggests ?? 'failure' });
     return done('error', message, who);
+  } finally {
+    await Promise.all(open.map((b) => b.close().catch(() => {})));
   }
 };

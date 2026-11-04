@@ -3,6 +3,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { limiter, personaApi, type Api } from './api.ts';
+import type { Browse } from './browser.ts';
 import { exportRun, openRecorder } from './evidence.ts';
 import { openLedger } from './ledger.ts';
 import { personasFrom, rng, type Persona } from './personas.ts';
@@ -18,6 +19,8 @@ export type RunOptions = {
   seedLedgerPath: string;
   scenarios: Scenario[];
   approve: Approver;
+  /** Opens AUGUR in a browser as a persona, for scenarios that look at the screen. */
+  browse?: Browse;
   mode: 'dry' | 'timeline';
   hours?: number;
   /** The run's peak rate across every persona, in calls a second (the spec's load: 5). */
@@ -97,6 +100,14 @@ export const startRun = async (o: RunOptions) => {
   const apiFor = (p: Persona, scenario?: string): Api =>
     personaApi({ gateway: o.gateway, token: tokenFor(p), persona: p.key, scenario, evidence, limit, fetchImpl: o.fetchImpl });
 
+  // A browser signed in as the persona. The API sign-in comes first, so their own password is chosen.
+  const browse = o.browse
+    ? async (p: Persona) => {
+        await tokenFor(p)();
+        return o.browse!({ url: o.gateway, username: p.username, passwords: credentials.candidates(p.username, p.temporaryPassword) });
+      }
+    : undefined;
+
   // The guard: a sample admin signs in and reads the gateway's Status. Only where sample data is allowed.
   const admin = personas.find((p) => p.roles.includes('admin'));
   if (!admin) throw new RunRefused('The cast has no sample admin, so the run can’t check that this deployment allows sample data. Give one sample person the admin role in the cast.');
@@ -149,6 +160,7 @@ export const startRun = async (o: RunOptions) => {
         saveState: () => writeFileSync(statePath, `${JSON.stringify(states, null, 2)}\n`),
         dry: o.mode === 'dry',
         sleep: clock.sleep,
+        browse,
       });
       (outcomes[e.scenario] ??= {})[outcome] = (outcomes[e.scenario]?.[outcome] ?? 0) + 1;
       if (o.mode === 'dry' || outcome !== 'passed') log(`${outcome === 'passed' ? '✓' : outcome === 'not-available' || outcome === 'no-persona' ? '–' : '✗'} ${scenario.id} ${scenario.title}${why ? `: ${why}` : ''}`);
