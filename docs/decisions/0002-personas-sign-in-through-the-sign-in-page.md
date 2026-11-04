@@ -1,6 +1,6 @@
 # 0002. Personas sign in through the real sign-in page, approved by a headless browser (Playwright)
 
-- **Status:** Proposed
+- **Status:** Accepted (Harry, 2026-11-04)
 - **Date:** 2026-11-03
 - **Decided by:** Harry
 - **Replaces:** none. Builds on AUGUR's ADR 0056 (the seed signs in with the device grant).
