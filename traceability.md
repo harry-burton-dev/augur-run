@@ -11,6 +11,7 @@ moves its row's status in the same pull request.
 
 **Status:** **Written** runs today. **Waiting** is written from the journey but reports "not available"
 until the work it names lands. **Elsewhere** is proved outside the run, in the place named.
+A scenario an app owns is named with its repository's `run/` module, and lives there.
 
 | Goal | What is checked | Proved by | Scenario or check | Status | Evidence |
 | --- | --- | --- | --- | --- | --- |
@@ -42,7 +43,8 @@ until the work it names lands. **Elsewhere** is proved outside the run, in the p
 | 27 | Staging install with an empty deviation log (CUJ 5) | Run (operator) | The deviation log | Elsewhere | |
 | 28 | A feature preview turned on for one floor only | Run | RUN-11 | Waiting | |
 | 29, 30, 36 | People read only where their floors allow | Run | RUN-02 | Written | |
-| 29, 30, 33a | Binding events; Data Atlas shows what points at an entity; Artifacts' floor reading rules (CUJ 6) | Run | Each pillar's own `run/` module (augur-atlas, augur-folio, augur-mandate) | Elsewhere | |
+| 29, 33a | Binding events; Data Atlas shows what points at an entity (CUJ 6) | Run | Each pillar's own `run/` module (augur-atlas, augur-mandate) | Elsewhere | |
+| 30 | What is published up a floor is found and opened there, under its library's name, and nowhere else (CUJ 6) | Run | RUN-15, in augur-folio's `run/` module | Written | |
 | 34 | Zero im-platform PRs made for the reference app | Build gate | The reference app's gate script | Elsewhere | |
 | 35 to 38 | The run ledger has no failure entry; the order of events holds | Run | The ledger (`pnpm run-suite ledger`) and the run's report in `runs/` | Elsewhere | |
 | 36 | The run carries the spec's load, so the watch and the alerts have counts | Run | RUN-04 | Written | |
