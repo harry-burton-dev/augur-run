@@ -13,5 +13,7 @@ import { inbox } from './run-10-inbox.ts';
 import { floorPreview } from './run-11-floor-preview.ts';
 import { appFrame } from './run-13-app-frame.ts';
 import { activityExport } from './run-14-activity-export.ts';
+import { emailSender } from './run-16-email.ts';
+import { pointInTime } from './run-17-point-in-time.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, inbox, floorPreview, appFrame, activityExport, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, inbox, floorPreview, appFrame, activityExport, emailSender, pointInTime, ...pending];

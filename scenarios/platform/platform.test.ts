@@ -24,7 +24,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   // One app with one preview: on for chosen floors and the floors beneath them, else off.
   let preview: { mode: string; floors?: string[]; chosen: boolean } = { mode: 'off', chosen: false };
   const below = (floor: string, top: string) => floor === top || (top === 'f-1' && floor === 'f-1a');
-  let org = { name: 'Org', timeZone: 'UTC', sender: { name: 'Org' } };
+  let org = { name: 'Org', timeZone: 'UTC', sender: { name: 'Org', address: 'augur@example.org' } };
   let signingIn = '';
   const who = (h: Record<string, string>) => h.authorization?.replace('Bearer ', '') ?? '';
   const floorsOf = (id: string) => [
@@ -38,7 +38,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     [`POST ${OIDC}/token`]: () => ({ body: { access_token: people.find((p) => p.username === signingIn)!.id, expires_in: 300 } }),
     'GET /api/gateway/v1/status': (_b, h) =>
       roles[who(h)]?.includes('admin')
-        ? { body: { components: [{ name: 'gateway', state: 'up', version: '0.17.1' }, { name: 'identity', state: 'up' }], seeding: { allowed: true }, backups: { state: 'ok', lastBackup: { at: new Date().toISOString(), ok: true } } } }
+        ? { body: { components: [{ name: 'gateway', state: 'up', version: '0.17.1' }, { name: 'identity', state: 'up' }], seeding: { allowed: true }, backups: { state: 'ok', lastBackup: { at: new Date().toISOString(), ok: true }, pointInTime: { at: new Date().toISOString(), ok: true } }, email: { state: 'ok', from: 'augur@example.org', checkedAt: new Date().toISOString() } } }
         : { status: 403, body: { message: 'Only admins.' } },
     'GET /api/identity/v1/me': (_b, h) => (off.has(who(h)) ? { status: 401, body: { message: 'Signed out.' } } : { body: { id: who(h), roles: roles[who(h)] } }),
     'GET /api/identity/v1/me/workspaces': (_b, h) => ({ body: { workspaces: floorsOf(who(h)) } }),
@@ -141,7 +141,7 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14', 'RUN-16', 'RUN-17']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
     for (const id of ['RUN-07', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
