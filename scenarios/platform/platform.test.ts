@@ -55,8 +55,9 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     'GET /api/identity/v1/organisation': () => ({ body: org }),
     'PATCH /api/identity/v1/admin/organisation': (b, h) => {
       if (!roles[who(h)]?.includes('admin')) return { status: 403, body: { message: 'Only admins.' } };
+      const from = { name: org.name };
       org = { ...org, ...(b as object) };
-      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(h) }, action: 'organisation.changed', target: 'org' });
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(h) }, action: 'organisation.changed', target: 'org', detail: { from, to: b } });
       return { body: org };
     },
   };
@@ -70,6 +71,13 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     const path = new URL(String(input)).pathname;
     const m = path.match(/^\/api\/identity\/v1\/admin\/departments\/([^/]+)\/members\/([^/]+)$/);
     const headers = Object.fromEntries(Object.entries((init.headers ?? {}) as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]));
+    if (path === '/api/events/v1/audit/export') {
+      const format = new URL(String(input)).searchParams.get('format');
+      const rows = [...audit] as { id: string }[];
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(headers) }, action: 'audit.exported' });
+      const text = format === 'jsonl' ? rows.map((r) => `${JSON.stringify(r)}\n`).join('') : `at,actor,actorKind,app,action,target,floor,detail\n${rows.map(() => 'row\n').join('')}`;
+      return new Response(text, { status: 200 });
+    }
     if (m && (init.method === 'PUT' || init.method === 'DELETE')) {
       const r = member(init.method === 'PUT')(m[1]!, m[2]!, headers);
       return new Response(null, { status: r.status });
@@ -106,8 +114,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09', 'RUN-11']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-12', 'RUN-13', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });
