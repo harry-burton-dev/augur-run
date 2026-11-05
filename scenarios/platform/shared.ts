@@ -7,6 +7,10 @@ export const PATHS = {
   manifest: '/api/registry/v1/manifest',
   notifications: '/api/events/v1/notifications',
   audit: '/api/events/v1/audit',
+  inbox: '/api/events/v1/inbox',
+  inboxCounts: '/api/events/v1/inbox/counts',
+  inboxItem: (id: string) => `/api/events/v1/inbox/${encodeURIComponent(id)}`,
+  inboxStep: (id: string, step: 'take' | 'release') => `/api/events/v1/inbox/${encodeURIComponent(id)}/${step}`,
   auditExport: '/api/events/v1/audit/export',
   organisation: '/api/identity/v1/organisation',
   adminOrganisation: '/api/identity/v1/admin/organisation',
@@ -30,6 +34,8 @@ export type Organisation = { name: string; timeZone: string; sender: { name: str
 export type PreviewsForMe = { apps: { app: string; name: string; previews: { id: string; name: string; mode: string; ended: boolean; on: boolean }[] }[] };
 export type PreviewMode = 'off' | 'opt-in' | 'everyone' | 'floors';
 export type PreviewsAdmin = { defaultMode: PreviewMode; previews: { id: string; mode: PreviewMode; ended: boolean; chosen: boolean; floors?: string[] }[] };
+export type InboxCounts = { you: number; teams: number; overdue: number };
+export type InboxItem = { id: string; app: string; kind: string; owner: { kind: 'person' | 'team'; id: string }; state: string; takenBy?: string; redacted?: boolean; title?: string };
 export type AuditEntry = { id: string; at: string; actor?: { id: string }; app?: string; action: string; target?: string; detail?: Record<string, unknown> };
 
 /** A service call should answer within this (alpha spec, non-functional requirements). */
