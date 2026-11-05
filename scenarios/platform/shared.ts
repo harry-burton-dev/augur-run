@@ -3,6 +3,10 @@
 export const PATHS = {
   status: '/api/gateway/v1/status',
   me: '/api/identity/v1/me',
+  preferences: '/api/identity/v1/me/preferences',
+  sessions: '/api/identity/v1/me/sessions',
+  signIns: '/api/identity/v1/me/sign-ins',
+  myData: '/api/identity/v1/me/data',
   workspaces: '/api/identity/v1/me/workspaces',
   manifest: '/api/registry/v1/manifest',
   notifications: '/api/events/v1/notifications',
