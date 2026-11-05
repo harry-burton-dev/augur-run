@@ -41,7 +41,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 25 | The broken release B installs on request and goes back by itself, with no SSH | Run (operator) | Step 3 of the order of events, before the run | Elsewhere | |
 | 26 | Scans, pins, rulesets and token scope in every signing repository; fail-closed signed caller | CI | `check-repo-security` in each repository | Elsewhere | |
 | 27 | Staging install with an empty deviation log (CUJ 5) | Run (operator) | The deviation log | Elsewhere | |
-| 28 | A feature preview turned on for one floor only | Run | RUN-11 | Waiting | |
+| 28 | A feature preview turned on for one floor reaches that floor's people within 5 minutes and nobody else's, with no release | Run | RUN-11 | Written | |
 | 29, 30, 36 | People read only where their floors allow | Run | RUN-02 | Written | |
 | 29, 33a | Binding events; Data Atlas shows what points at an entity (CUJ 6) | Run | Each pillar's own `run/` module (augur-atlas, augur-mandate) | Elsewhere | |
 | 30 | What is published up a floor is found and opened there, under its library's name, and nowhere else (CUJ 6) | Run | RUN-15, in augur-folio's `run/` module | Written | |

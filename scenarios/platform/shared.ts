@@ -9,6 +9,9 @@ export const PATHS = {
   audit: '/api/events/v1/audit',
   organisation: '/api/identity/v1/organisation',
   adminOrganisation: '/api/identity/v1/admin/organisation',
+  previews: '/api/registry/v1/feature-previews',
+  appPreviews: (app: string) => `/api/registry/v1/apps/${encodeURIComponent(app)}/feature-previews`,
+  appPreview: (app: string, preview: string) => `/api/registry/v1/apps/${encodeURIComponent(app)}/feature-previews/${encodeURIComponent(preview)}`,
   member: (floor: string, person: string) => `/api/identity/v1/admin/departments/${encodeURIComponent(floor)}/members/${encodeURIComponent(person)}`,
 };
 
@@ -21,6 +24,9 @@ export type Status = {
   seeding?: { allowed: boolean };
 };
 export type Organisation = { name: string; timeZone: string; sender: { name: string; address?: string } };
+export type PreviewsForMe = { apps: { app: string; name: string; previews: { id: string; name: string; mode: string; ended: boolean; on: boolean }[] }[] };
+export type PreviewMode = 'off' | 'opt-in' | 'everyone' | 'floors';
+export type PreviewsAdmin = { defaultMode: PreviewMode; previews: { id: string; mode: PreviewMode; ended: boolean; chosen: boolean; floors?: string[] }[] };
 export type AuditEntry = { id: string; at: string; actor?: { id: string }; app?: string; action: string; target?: string; detail?: Record<string, unknown> };
 
 /** A service call should answer within this (alpha spec, non-functional requirements). */

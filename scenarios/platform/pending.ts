@@ -49,18 +49,6 @@ export const pending: Scenario[] = [
     issue: 'PER-146',
   }),
   waiting({
-    id: 'RUN-11',
-    title: 'A feature preview is turned on for one floor',
-    goals: [28],
-    given: 'A feature preview, and two floors.',
-    when: 'An admin turns the preview on for one floor.',
-    then: 'People on that floor get it, and people on the other floor don’t, with no release.',
-    cadence: { kind: 'once', afterMinutes: 120 },
-    needs: [{ as: 'admin', role: 'admin' }, { as: 'on', floors: 'own', notSameAs: ['admin'] }, { as: 'off', floors: 'own', notSameAs: ['admin', 'on'] }],
-    waitsOn: 'Feature previews can’t be targeted at a floor yet.',
-    issue: 'alpha Goal 28',
-  }),
-  waiting({
     id: 'RUN-12',
     title: 'A failure alerts an absent admin',
     goals: [23],
