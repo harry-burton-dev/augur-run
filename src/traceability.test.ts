@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { scenarios } from '../scenarios/platform/index.ts';
 import { scenarioProblems } from './scenario.ts';
 
-type Row = { goals: string[]; runs: string[]; status: string };
+type Row = { goals: string[]; runs: string[]; status: string; app: boolean };
 
 /** "29, 30, 33a" or "35 to 38" → the goal numbers it covers. */
 const goalsIn = (cell: string) =>
@@ -22,7 +22,8 @@ const rows = (): Row[] =>
     .filter((l) => /^\| \d/.test(l))
     .map((l) => {
       const cells = l.split('|').map((c) => c.trim());
-      return { goals: goalsIn(cells[1] ?? ''), runs: (cells[4] ?? '').match(/RUN-\d{2,}/g) ?? [], status: cells[5] ?? '' };
+      // A scenario an app owns lives in that app's repository, named here with its `run/` module.
+      return { goals: goalsIn(cells[1] ?? ''), runs: (cells[4] ?? '').match(/RUN-\d{2,}/g) ?? [], status: cells[5] ?? '', app: /`run\/` module/.test(cells[4] ?? '') };
     });
 
 describe('traceability.md', () => {
@@ -33,7 +34,7 @@ describe('traceability.md', () => {
 
   it('names only scenarios that exist', () => {
     const known = new Set(scenarios.map((s) => s.id));
-    const unknown = rows().flatMap((r) => r.runs).filter((id) => !known.has(id));
+    const unknown = rows().filter((r) => !r.app).flatMap((r) => r.runs).filter((id) => !known.has(id));
     expect(unknown).toEqual([]);
   });
 
