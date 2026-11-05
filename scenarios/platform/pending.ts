@@ -3,23 +3,10 @@
 // replaces `available` and `run` with the real steps, and its traceability row moves to Written.
 import { notYet, type Scenario } from '../../src/scenario.ts';
 
-const waiting = (s: Omit<Scenario, 'owner' | 'run' | 'available'> & { waitsOn: string; issue: string }): Scenario => {
+export const waiting = (s: Omit<Scenario, 'owner' | 'run' | 'available'> & { waitsOn: string; issue: string }): Scenario => {
   const { waitsOn, issue, ...rest } = s;
   return { ...rest, owner: 'platform', available: notYet(waitsOn, issue), run: async () => {} };
 };
 
-export const pending: Scenario[] = [
-  waiting({
-    id: 'RUN-07',
-    title: 'A new person is invited and runs their own account',
-    goals: [9, 11, 13],
-    cuj: 2,
-    given: 'An organisation with a mail relay (Mailpit for the run) and organisation settings.',
-    when: 'An admin invites someone by email. They follow the mail, set a password and two-step sign-in, then change their notification preferences.',
-    then: 'They land on Home with the organisation’s name, with no password passed by hand and no visit to the sign-in console.',
-    cadence: { kind: 'every', minutes: 480 },
-    needs: [{ as: 'admin', role: 'admin' }],
-    waitsOn: 'Inviting someone by email isn’t in AUGUR yet. Email (RUN-16) and Account (RUN-18) are, and are proved on their own.',
-    issue: 'PER-194 (email invites)',
-  }),
-];
+/** None waiting now: RUN-07 (email invites) has its real steps and waits on PER-194 through its own `available`. */
+export const pending: Scenario[] = [];
