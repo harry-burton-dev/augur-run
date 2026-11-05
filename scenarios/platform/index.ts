@@ -7,6 +7,7 @@ import { adminActivity } from './run-03-admin-activity.ts';
 import { steadyUse } from './run-04-steady-use.ts';
 import { statusHealthy } from './run-05-status.ts';
 import { nightlyBackup } from './run-06-nightly-backup.ts';
+import { organisationSettings } from './run-09-organisation.ts';
 import { appFrame } from './run-13-app-frame.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, appFrame, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, organisationSettings, appFrame, ...pending];

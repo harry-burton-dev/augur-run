@@ -27,7 +27,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 12 | An admin's floor change reaches the person within 5 minutes, and Activity records who did it | Run | RUN-03 | Written | |
 | 12 | A leaver is turned off within 5 minutes and their items handed over (CUJ 3) | Run | RUN-08 | Waiting | |
 | 12 | Activity keeps before and after, and exports to CSV | Run | RUN-14 | Waiting | |
-| 13 | Organisation settings are read by Home, sign-in and mail | Run | RUN-09 | Waiting | |
+| 13 | Organisation settings are read by everyone within 5 minutes, and audited (sign-in page and mail not yet checked) | Run | RUN-09 | Written | |
 | 14 | The Inbox holds stateful items, apart from notifications; Home shows the counts | Run | RUN-10 | Waiting | |
 | 15 to 18 | Kit released on its own version; axe with no serious findings; picker search in place | CI | augur-kit and im-platform contract tests | Elsewhere | |
 | 19 | Design decisions recorded before the SDK 2.0 cut | Review | Decision register | Elsewhere | |

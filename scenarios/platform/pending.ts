@@ -36,18 +36,6 @@ export const pending: Scenario[] = [
     issue: 'PER-194, PER-148',
   }),
   waiting({
-    id: 'RUN-09',
-    title: 'Organisation settings are read everywhere',
-    goals: [13],
-    given: 'An organisation name, time zone and email sender set in Admin → Organisation.',
-    when: 'An admin changes the organisation’s name, and people open Home and get mail.',
-    then: 'Home, the sign-in page and mail show the new name.',
-    cadence: { kind: 'once', afterMinutes: 60 },
-    needs: [{ as: 'admin', role: 'admin' }, { as: 'reader' }],
-    waitsOn: 'Organisation settings aren’t in AUGUR yet.',
-    issue: 'PER-196',
-  }),
-  waiting({
     id: 'RUN-10',
     title: 'The Inbox holds work that waits on a person',
     goals: [14],

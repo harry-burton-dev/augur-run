@@ -18,10 +18,11 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   ]);
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
+  let org = { name: 'Org', timeZone: 'UTC', sender: { name: 'Org' } };
   let signingIn = '';
   const who = (h: Record<string, string>) => h.authorization?.replace('Bearer ', '') ?? '';
   const floorsOf = (id: string) => [
-    { id: 'org', kind: 'org', name: 'Org' },
+    { id: 'org', kind: 'org', name: org.name },
     ...[...members].filter(([, m]) => m.has(id)).map(([f]) => ({ id: f, kind: 'department', name: f })),
     // A team floor's people can reach the floor above it.
     ...(members.get('f-1a')!.has(id) && !members.get('f-1')!.has(id) ? [{ id: 'f-1', kind: 'department', name: 'f-1' }] : []),
@@ -38,6 +39,13 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     'GET /api/registry/v1/manifest': (_b, h) => (h['x-workspace-id'] && !floorsOf(who(h)).some((f) => f.id === h['x-workspace-id']) ? { status: 403, body: { error: 'forbidden', message: 'You’re not on that floor.' } } : { body: [] }),
     'GET /api/events/v1/notifications': () => ({ body: [] }),
     'GET /api/events/v1/audit': () => ({ body: audit }),
+    'GET /api/identity/v1/organisation': () => ({ body: org }),
+    'PATCH /api/identity/v1/admin/organisation': (b, h) => {
+      if (!roles[who(h)]?.includes('admin')) return { status: 403, body: { message: 'Only admins.' } };
+      org = { ...org, ...(b as object) };
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(h) }, action: 'organisation.changed', target: 'org' });
+      return { body: org };
+    },
   };
   const member = (add: boolean) => (floor: string, person: string, h: Record<string, string>) => {
     if (add || !o.removalSticks) members.get(floor)![add ? 'add' : 'delete'](person);
@@ -85,8 +93,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-12', 'RUN-13', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-11', 'RUN-12', 'RUN-13', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });
