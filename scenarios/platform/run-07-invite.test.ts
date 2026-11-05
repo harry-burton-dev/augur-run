@@ -5,7 +5,7 @@ import { invite } from './run-07-invite.ts';
 
 const T0 = Date.UTC(2026, 10, 11, 9, 0);
 
-const deployment = (o: { password?: boolean; noResend?: boolean } = {}) => {
+const deployment = (o: { password?: boolean; noResend?: boolean; email?: string } = {}) => {
   const people = new Map<string, { state: string; count: number }>();
   const audit: { action: string; target: string; actor: { id: string }; detail?: Record<string, unknown> }[] = [];
   const left: string[] = [];
@@ -13,7 +13,7 @@ const deployment = (o: { password?: boolean; noResend?: boolean } = {}) => {
   const ok = (body: unknown, status = 200) => ({ ok: status < 300, status, body });
   const api = {
     get: async (path: string) => {
-      if (path === '/api/gateway/v1/status') return ok({ email: { state: 'ok' } });
+      if (path === '/api/gateway/v1/status') return ok({ email: { state: o.email ?? 'ok' } });
       if (path.startsWith('/api/events/v1/audit')) return ok(audit);
       const p = people.get(path.split('/').pop()!);
       return p ? ok({ id: 'x', state: p.state, invite: { method: 'email', count: p.count } }) : ok({}, 404);
@@ -64,7 +64,9 @@ describe('RUN-07, inviting by email', () => {
     expect(d.checks.filter((c) => !c.ok).map((c) => c.label)).toEqual(['no one-time password is handed back', 'the admin sends the invite again', 'Activity records the resend']);
   });
 
-  it('waits on PER-194 until invites are in AUGUR', async () => {
-    expect(await invite.available!({} as never)).toMatchObject({ ok: false, issue: 'PER-194 (email invites)' });
+  it('waits while email isn’t working, saying who can change that', async () => {
+    expect(await invite.available!(deployment().ctx)).toEqual({ ok: true });
+    const off = deployment({ email: 'attention' });
+    expect(await invite.available!(off.ctx)).toMatchObject({ ok: false, whoCanChange: expect.stringContaining('SMTP_') });
   });
 });

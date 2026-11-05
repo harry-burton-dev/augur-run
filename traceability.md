@@ -23,7 +23,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 7 | One shipped-app list; reserved ids are refused | CI | im-platform checks | Elsewhere | |
 | 8 | The four ADRs are amended or accepted before W1 | Review | Decision register | Elsewhere | |
 | 9 | Mail can be sent through the relay, from the organisation's sender (whether each mail arrives is not yet checked) | Run | RUN-16 | Written | |
-| 9, 11, 13 | Invite by email, two-step sign-in, organisation name on Home (CUJ 2) | Run | RUN-07 | Waiting | |
+| 9, 11, 13 | Invite by email, two-step sign-in, organisation name on Home (CUJ 2) | Run | RUN-07 (the invite, its resend and Activity; the operator follows the mail in Mailpit and notes it in the ledger) | Written | |
 | 11 | A person runs their own account: a preference kept, sessions and sign-ins listed, their data downloaded | Run | RUN-18 | Written | |
 | 11, 12, 36 | Every sample person signs in, choosing their own password, and finds their roles and floors | Run | RUN-01 | Written | |
 | 12 | An admin's floor change reaches the person within 5 minutes, and Activity records who did it | Run | RUN-03 | Written | |
