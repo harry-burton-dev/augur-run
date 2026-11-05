@@ -7,6 +7,7 @@ import { adminActivity } from './run-03-admin-activity.ts';
 import { steadyUse } from './run-04-steady-use.ts';
 import { statusHealthy } from './run-05-status.ts';
 import { nightlyBackup } from './run-06-nightly-backup.ts';
+import { invite } from './run-07-invite.ts';
 import { leaver } from './run-08-leaver.ts';
 import { organisationSettings } from './run-09-organisation.ts';
 import { inbox } from './run-10-inbox.ts';
@@ -18,4 +19,4 @@ import { emailSender } from './run-16-email.ts';
 import { pointInTime } from './run-17-point-in-time.ts';
 import { account } from './run-18-account.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, inbox, floorPreview, faultDrill, appFrame, activityExport, emailSender, pointInTime, account, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, invite, leaver, organisationSettings, inbox, floorPreview, faultDrill, appFrame, activityExport, emailSender, pointInTime, account, ...pending];

@@ -21,6 +21,8 @@ export const PATHS = {
   previews: '/api/registry/v1/feature-previews',
   appPreviews: (app: string) => `/api/registry/v1/apps/${encodeURIComponent(app)}/feature-previews`,
   appPreview: (app: string, preview: string) => `/api/registry/v1/apps/${encodeURIComponent(app)}/feature-previews/${encodeURIComponent(preview)}`,
+  people: '/api/identity/v1/admin/people',
+  invite: (id: string) => `/api/identity/v1/admin/people/${encodeURIComponent(id)}/invite`,
   person: (id: string) => `/api/identity/v1/admin/people/${encodeURIComponent(id)}`,
   leave: (id: string) => `/api/identity/v1/admin/people/${encodeURIComponent(id)}/leave`,
   member: (floor: string, person: string) => `/api/identity/v1/admin/departments/${encodeURIComponent(floor)}/members/${encodeURIComponent(person)}`,
