@@ -29,7 +29,7 @@ export const lookAt = async (page: Page) => {
   return { shown, stage, gauge, page: page_, rail, drawer, state, scroll };
 };
 
-/** The ways a look breaks the one-layout rule (docs/app-patterns.md in im-platform), in words. */
+/** The ways a look breaks the one-layout rule (App patterns, in the AUGUR handbook), in words. */
 export const problemsIn = (l: Awaited<ReturnType<typeof lookAt>>): string[] => {
   const out: string[] = [];
   if (!l.shown) return ['it shows no app frame'];

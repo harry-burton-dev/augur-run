@@ -16,7 +16,6 @@ suite changes.
 | `scenarios/platform/` | Scenarios for AUGUR itself. Each app's scenarios live in its own repository's `run/` module |
 | `traceability.md` | Which goal each scenario proves: the run gate's checklist |
 | `runs/` | Exported summaries of finished runs: evidence, ledger and verdict, never a secret |
-| `docs/decisions/` | Decisions that only concern the suite |
 
 ## Working on it
 

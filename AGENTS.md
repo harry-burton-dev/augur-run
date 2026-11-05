@@ -7,9 +7,11 @@ it stays as AUGUR's regression suite. AUGUR itself, its ADRs and its guides are 
 repository; read its AGENTS.md and ADRs 0050 and 0056 before changing what the suite checks.
 
 ## Where to look
-- AUGUR's ADRs (`im-platform` docs/decisions), especially 0050 (the proving run), 0056 (the seed and its
+- AUGUR's decisions (ADRs and PDRs) in the Decision register, in the AUGUR handbook on Google Drive
+  (`04 Decisions`, https://drive.google.com/drive/folders/16wXmUMRNP2_vXAlf4kBMF9hCDNUXg7yO), especially 0050 (the proving run), 0056 (the seed and its
   cast) and 0045 (the bake gate).
-- This repository's own decisions: `docs/decisions/` here.
+- This repository's own decisions are in the same register, under its name. Records are never written into
+  a repository: ask for a number and send what was decided and why.
 - `traceability.md`: which goal each scenario proves. It is the run gate's checklist.
 - The task: its Linear issue (team PER, initiative AUGUR).
 

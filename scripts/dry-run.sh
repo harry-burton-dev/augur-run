@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # The dry run against a fresh install: im-platform's deploy test runs this as its THEN command, with
-# AUGUR_URL, AUGUR_ADMIN_USER and AUGUR_ADMIN_PASSWORD set (im-platform docs/deploy-test.md). It signs the
+# AUGUR_URL, AUGUR_ADMIN_USER and AUGUR_ADMIN_PASSWORD set (the deploy test, in the AUGUR handbook). It signs the
 # first admin in, seeds the install with `pnpm seed`'s cast, then runs every scenario once.
 #   IM_PLATFORM=<im-platform checkout> WORK=<folder> scripts/dry-run.sh
 set -euo pipefail
