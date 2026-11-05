@@ -19,6 +19,8 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
   const off = new Set<string>();
+  // One team item, which anyone may take and give back.
+  const item = { id: 'i-1', app: 'mandate', key: 'back-brief/1', kind: 'back-brief', owner: { kind: 'team', id: 'f-1' }, state: 'open', allow: {}, takenBy: undefined as string | undefined, history: [{ at: '', action: 'created' }] };
   // One app with one preview: on for chosen floors and the floors beneath them, else off.
   let preview: { mode: string; floors?: string[]; chosen: boolean } = { mode: 'off', chosen: false };
   const below = (floor: string, top: string) => floor === top || (top === 'f-1' && floor === 'f-1a');
@@ -42,6 +44,8 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     'GET /api/identity/v1/me/workspaces': (_b, h) => ({ body: { workspaces: floorsOf(who(h)) } }),
     'GET /api/registry/v1/manifest': (_b, h) => (h['x-workspace-id'] && !floorsOf(who(h)).some((f) => f.id === h['x-workspace-id']) ? { status: 403, body: { error: 'forbidden', message: 'You’re not on that floor.' } } : { body: [] }),
     'GET /api/events/v1/notifications': () => ({ body: [] }),
+    'GET /api/events/v1/inbox/counts': (_b, h) => ({ body: { you: item.takenBy === who(h) ? 1 : 0, teams: item.takenBy ? 0 : 1, overdue: 0 } }),
+    'GET /api/events/v1/inbox/i-1': () => ({ body: item }),
     'GET /api/events/v1/audit': () => ({ body: audit }),
     'GET /api/registry/v1/feature-previews': (_b, h) => ({
       body: { apps: [{ app: 'folio', name: 'Artifacts', previews: [{ id: 'board-view', name: 'Board view', mode: preview.mode, ended: false, on: preview.mode === 'floors' && !!preview.floors?.some((f) => below(h['x-workspace-id'] ?? '', f)) }] }] },
@@ -72,6 +76,18 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     const path = new URL(String(input)).pathname;
     const m = path.match(/^\/api\/identity\/v1\/admin\/departments\/([^/]+)\/members\/([^/]+)$/);
     const headers = Object.fromEntries(Object.entries((init.headers ?? {}) as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]));
+    if (path === '/api/events/v1/inbox') {
+      const tab = new URL(String(input)).searchParams.get('tab');
+      const me = who(headers);
+      const shown = tab === 'you' ? (item.takenBy === me ? [item] : []) : tab === 'teams' ? (item.takenBy ? [] : [item]) : [];
+      return new Response(JSON.stringify(shown), { status: 200 });
+    }
+    const step = path.match(/^\/api\/events\/v1\/inbox\/i-1\/(take|release)$/);
+    if (step && init.method === 'POST') {
+      item.takenBy = step[1] === 'take' ? who(headers) : undefined;
+      item.history.push({ at: '', action: step[1] === 'take' ? 'taken' : 'released' });
+      return new Response(JSON.stringify(item), { status: 200 });
+    }
     const person = path.match(/^\/api\/identity\/v1\/admin\/people\/([^/]+)(\/leave)?$/);
     if (person) {
       const id = person[1]!;
@@ -125,8 +141,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-10', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-07', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });
