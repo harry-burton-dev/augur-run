@@ -15,5 +15,6 @@ import { appFrame } from './run-13-app-frame.ts';
 import { activityExport } from './run-14-activity-export.ts';
 import { emailSender } from './run-16-email.ts';
 import { pointInTime } from './run-17-point-in-time.ts';
+import { account } from './run-18-account.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, inbox, floorPreview, appFrame, activityExport, emailSender, pointInTime, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, inbox, floorPreview, appFrame, activityExport, emailSender, pointInTime, account, ...pending];

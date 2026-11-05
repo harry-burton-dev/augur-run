@@ -19,6 +19,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
   const off = new Set<string>();
+  const prefs = new Map<string, object>();
   // One team item, which anyone may take and give back.
   const item = { id: 'i-1', app: 'mandate', key: 'back-brief/1', kind: 'back-brief', owner: { kind: 'team', id: 'f-1' }, state: 'open', allow: {}, takenBy: undefined as string | undefined, history: [{ at: '', action: 'created' }] };
   // One app with one preview: on for chosen floors and the floors beneath them, else off.
@@ -44,6 +45,11 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     'GET /api/identity/v1/me/workspaces': (_b, h) => ({ body: { workspaces: floorsOf(who(h)) } }),
     'GET /api/registry/v1/manifest': (_b, h) => (h['x-workspace-id'] && !floorsOf(who(h)).some((f) => f.id === h['x-workspace-id']) ? { status: 403, body: { error: 'forbidden', message: 'You’re not on that floor.' } } : { body: [] }),
     'GET /api/events/v1/notifications': () => ({ body: [] }),
+    'GET /api/identity/v1/me/preferences': (_b, h) => ({ body: prefs.get(who(h)) ?? {} }),
+    'PUT /api/identity/v1/me/preferences': (b, h) => (prefs.set(who(h), b as object), { body: b }),
+    'GET /api/identity/v1/me/sessions': () => ({ body: [{ id: 's-1' }] }),
+    'GET /api/identity/v1/me/sign-ins': () => ({ body: [] }),
+    'GET /api/identity/v1/me/data': (_b, h) => ({ body: { you: { id: who(h) }, missing: [] } }),
     'GET /api/events/v1/inbox/counts': (_b, h) => ({ body: { you: item.takenBy === who(h) ? 1 : 0, teams: item.takenBy ? 0 : 1, overdue: 0 } }),
     'GET /api/events/v1/inbox/i-1': () => ({ body: item }),
     'GET /api/events/v1/audit': () => ({ body: audit }),
@@ -141,7 +147,7 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14', 'RUN-16', 'RUN-17']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14', 'RUN-16', 'RUN-17', 'RUN-18']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
     for (const id of ['RUN-07', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);

@@ -19,8 +19,8 @@ export const pending: Scenario[] = [
     then: 'They land on Home with the organisation’s name, with no password passed by hand and no visit to the sign-in console.',
     cadence: { kind: 'every', minutes: 480 },
     needs: [{ as: 'admin', role: 'admin' }],
-    waitsOn: 'Invites, email and the Account area aren’t in AUGUR yet.',
-    issue: 'PER-189, PER-190 to PER-192',
+    waitsOn: 'Inviting someone by email isn’t in AUGUR yet. Email (RUN-16) and Account (RUN-18) are, and are proved on their own.',
+    issue: 'PER-194 (email invites)',
   }),
   waiting({
     id: 'RUN-12',
