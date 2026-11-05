@@ -18,6 +18,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   ]);
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
+  const off = new Set<string>();
   // One app with one preview: on for chosen floors and the floors beneath them, else off.
   let preview: { mode: string; floors?: string[]; chosen: boolean } = { mode: 'off', chosen: false };
   const below = (floor: string, top: string) => floor === top || (top === 'f-1' && floor === 'f-1a');
@@ -37,7 +38,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
       roles[who(h)]?.includes('admin')
         ? { body: { components: [{ name: 'gateway', state: 'up', version: '0.17.1' }, { name: 'identity', state: 'up' }], seeding: { allowed: true }, backups: { state: 'ok', lastBackup: { at: new Date().toISOString(), ok: true } } } }
         : { status: 403, body: { message: 'Only admins.' } },
-    'GET /api/identity/v1/me': (_b, h) => ({ body: { id: who(h), roles: roles[who(h)] } }),
+    'GET /api/identity/v1/me': (_b, h) => (off.has(who(h)) ? { status: 401, body: { message: 'Signed out.' } } : { body: { id: who(h), roles: roles[who(h)] } }),
     'GET /api/identity/v1/me/workspaces': (_b, h) => ({ body: { workspaces: floorsOf(who(h)) } }),
     'GET /api/registry/v1/manifest': (_b, h) => (h['x-workspace-id'] && !floorsOf(who(h)).some((f) => f.id === h['x-workspace-id']) ? { status: 403, body: { error: 'forbidden', message: 'You’re not on that floor.' } } : { body: [] }),
     'GET /api/events/v1/notifications': () => ({ body: [] }),
@@ -71,6 +72,16 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     const path = new URL(String(input)).pathname;
     const m = path.match(/^\/api\/identity\/v1\/admin\/departments\/([^/]+)\/members\/([^/]+)$/);
     const headers = Object.fromEntries(Object.entries((init.headers ?? {}) as Record<string, string>).map(([k, v]) => [k.toLowerCase(), v]));
+    const person = path.match(/^\/api\/identity\/v1\/admin\/people\/([^/]+)(\/leave)?$/);
+    if (person) {
+      const id = person[1]!;
+      const body = typeof init.body === 'string' ? JSON.parse(init.body) : {};
+      if (person[2] && init.method === 'POST') {
+        off.add(id);
+        audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(headers) }, action: 'person.left', target: id, detail: { handOverTo: body.handOverTo } });
+      } else if (init.method === 'PATCH' && body.enabled) off.delete(id);
+      return new Response(JSON.stringify({ id }), { status: 200 });
+    }
     if (path === '/api/events/v1/audit/export') {
       const format = new URL(String(input)).searchParams.get('format');
       const rows = [...audit] as { id: string }[];
@@ -114,8 +125,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-11', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-07', 'RUN-10', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });

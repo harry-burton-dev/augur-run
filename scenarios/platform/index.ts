@@ -7,9 +7,10 @@ import { adminActivity } from './run-03-admin-activity.ts';
 import { steadyUse } from './run-04-steady-use.ts';
 import { statusHealthy } from './run-05-status.ts';
 import { nightlyBackup } from './run-06-nightly-backup.ts';
+import { leaver } from './run-08-leaver.ts';
 import { organisationSettings } from './run-09-organisation.ts';
 import { floorPreview } from './run-11-floor-preview.ts';
 import { appFrame } from './run-13-app-frame.ts';
 import { activityExport } from './run-14-activity-export.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, organisationSettings, floorPreview, appFrame, activityExport, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, leaver, organisationSettings, floorPreview, appFrame, activityExport, ...pending];
