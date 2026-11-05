@@ -10,6 +10,7 @@ export const PATHS = {
   workspaces: '/api/identity/v1/me/workspaces',
   manifest: '/api/registry/v1/manifest',
   notifications: '/api/events/v1/notifications',
+  notification: (id: string) => `/api/events/v1/notifications/${encodeURIComponent(id)}`,
   audit: '/api/events/v1/audit',
   inbox: '/api/events/v1/inbox',
   inboxCounts: '/api/events/v1/inbox/counts',
