@@ -22,6 +22,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 6 | A new repository from the template runs in the dev shell in 15 minutes or less | Build gate | Recorded with the build gate | Elsewhere | |
 | 7 | One shipped-app list; reserved ids are refused | CI | im-platform checks | Elsewhere | |
 | 8 | The four ADRs are amended or accepted before W1 | Review | Decision register | Elsewhere | |
+| 9 | Mail can be sent through the relay, from the organisation's sender (whether each mail arrives is not yet checked) | Run | RUN-16 | Written | |
 | 9, 11, 13 | Invite by email, two-step sign-in, Account, organisation name on Home (CUJ 2) | Run | RUN-07 | Waiting | |
 | 11, 12, 36 | Every sample person signs in, choosing their own password, and finds their roles and floors | Run | RUN-01 | Written | |
 | 12 | An admin's floor change reaches the person within 5 minutes, and Activity records who did it | Run | RUN-03 | Written | |
@@ -37,6 +38,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 23 | Stopping Grafana, then the whole host, raises Backstage's late-report alert | Run (operator) | Recorded by the operator during the run | Elsewhere | |
 | 23, 24, 36 | Every service and app answers its health check all through the run | Run | RUN-05 | Written | |
 | 24, 36 | The 02:00 UTC backup runs each night of the run | Run | RUN-06 | Written | |
+| 24 | The database can be restored to a point in time: WAL archived and copied off the server, the weekly replay test passing | Run | RUN-17 | Written | |
 | 24 | Postgres restart and host reboot recover with no double job runs; off-server copy restored; timeouts tested | Run (operator) and CI | Operator drill during the run; im-platform tests | Elsewhere | |
 | 25 | The broken release B installs on request and goes back by itself, with no SSH | Run (operator) | Step 3 of the order of events, before the run | Elsewhere | |
 | 26 | Scans, pins, rulesets and token scope in every signing repository; fail-closed signed caller | CI | `check-repo-security` in each repository | Elsewhere | |

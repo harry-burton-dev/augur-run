@@ -27,7 +27,13 @@ export type Floor = { id: string; kind: string; name: string; path?: string[] };
 export type Component = { name: string; kind?: string; state?: string; version?: string; problem?: string };
 export type Status = {
   components?: Component[];
-  backups?: { state: string; problem?: string; lastBackup?: { at: string; ok: boolean; problem?: string } };
+  backups?: {
+    state: string;
+    problem?: string;
+    lastBackup?: { at: string; ok: boolean; problem?: string };
+    pointInTime?: { at: string; ok: boolean; problem?: string; archivedAt?: string; copiedAt?: string; earliest?: string; lastTest?: { at: string; ok: boolean } };
+  };
+  email?: { state: 'off' | 'ok' | 'attention'; problem?: string; from?: string; checkedAt?: string };
   seeding?: { allowed: boolean };
 };
 export type Organisation = { name: string; timeZone: string; sender: { name: string; address?: string } };
