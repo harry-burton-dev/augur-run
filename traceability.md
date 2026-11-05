@@ -25,6 +25,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 9 | Mail can be sent through the relay, from the organisation's sender (whether each mail arrives is not yet checked) | Run | RUN-16 | Written | |
 | 9, 11, 13 | Invite by email, two-step sign-in, organisation name on Home (CUJ 2) | Run | RUN-07 (the invite, its resend and Activity; the operator follows the mail in Mailpit and notes it in the ledger) | Written | |
 | 11 | A person runs their own account: a preference kept, sessions and sign-ins listed, their data downloaded | Run | RUN-18 | Written | |
+| 9, 11 | A person chooses how notices reach them by email (each thing that needs them, a daily or weekly digest, quiet hours) and the choice is kept; a notice email's link opens its notification (whether the mail arrives: RUN-23, by the operator) | Run | RUN-25 | Written | |
 | 11, 12, 36 | Every sample person signs in, choosing their own password, and finds their roles and floors | Run | RUN-01 | Written | |
 | 12 | An admin's floor change reaches the person within 5 minutes, and Activity records who did it | Run | RUN-03 | Written | |
 | 12 | A leaver is turned off within 5 minutes and their work handed to a successor, recorded in Activity (CUJ 3); each pillar checks its own handover | Run | RUN-08 | Written | |
