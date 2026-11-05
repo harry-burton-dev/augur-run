@@ -7,6 +7,8 @@ export const PATHS = {
   manifest: '/api/registry/v1/manifest',
   notifications: '/api/events/v1/notifications',
   audit: '/api/events/v1/audit',
+  organisation: '/api/identity/v1/organisation',
+  adminOrganisation: '/api/identity/v1/admin/organisation',
   member: (floor: string, person: string) => `/api/identity/v1/admin/departments/${encodeURIComponent(floor)}/members/${encodeURIComponent(person)}`,
 };
 
@@ -18,6 +20,7 @@ export type Status = {
   backups?: { state: string; problem?: string; lastBackup?: { at: string; ok: boolean; problem?: string } };
   seeding?: { allowed: boolean };
 };
+export type Organisation = { name: string; timeZone: string; sender: { name: string; address?: string } };
 export type AuditEntry = { id: string; at: string; actor?: { id: string }; app?: string; action: string; target?: string; detail?: Record<string, unknown> };
 
 /** A service call should answer within this (alpha spec, non-functional requirements). */
