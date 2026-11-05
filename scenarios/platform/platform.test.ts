@@ -18,6 +18,9 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   ]);
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
+  const invited = new Map<string, number>();
+  // The run's own clock, once a dry run starts one, so an invite's expiry is counted from the run's time.
+  let now = () => Date.now();
   const off = new Set<string>();
   const prefs = new Map<string, object>();
   // One team item, which anyone may take and give back.
@@ -94,6 +97,24 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
       item.history.push({ at: '', action: step[1] === 'take' ? 'taken' : 'released' });
       return new Response(JSON.stringify(item), { status: 200 });
     }
+    // Invites by email (PER-194): a new person, an invite that lasts 72 hours, and a resend.
+    if (path === '/api/identity/v1/admin/people' && init.method === 'POST') {
+      const id = `p-invited-${invited.size + 1}`;
+      invited.set(id, 1);
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(headers) }, action: 'person.added', target: id, detail: { method: 'email' } });
+      const expiresAt = new Date(now() + 72 * 3_600_000).toISOString();
+      return new Response(JSON.stringify({ person: { id }, invite: { method: 'email', expiresAt } }), { status: 201 });
+    }
+    const invite = path.match(/^\/api\/identity\/v1\/admin\/people\/([^/]+)\/invite$/);
+    if (invite && init.method === 'POST' && invited.has(invite[1]!)) {
+      invited.set(invite[1]!, invited.get(invite[1]!)! + 1);
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(headers) }, action: 'person.invite-resent', target: invite[1] });
+      return new Response(JSON.stringify({ invite: { method: 'email' } }), { status: 200 });
+    }
+    const asked = path.match(/^\/api\/identity\/v1\/admin\/people\/([^/]+)$/)?.[1];
+    if (asked && invited.has(asked) && (init.method ?? 'GET') === 'GET') {
+      return new Response(JSON.stringify({ id: asked, state: 'invited', invite: { method: 'email', count: invited.get(asked) } }), { status: 200 });
+    }
     const person = path.match(/^\/api\/identity\/v1\/admin\/people\/([^/]+)(\/leave)?$/);
     if (person) {
       const id = person[1]!;
@@ -117,7 +138,7 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     }
     return base.impl(input, init);
   }) as typeof fetch;
-  return { impl, setSigningIn: (u: string) => (signingIn = u) };
+  return { impl, setSigningIn: (u: string) => (signingIn = u), setClock: (f: () => number) => (now = f) };
 };
 
 describe('the platform scenarios in a dry run', () => {
@@ -125,6 +146,7 @@ describe('the platform scenarios in a dry run', () => {
     const f = files();
     let t = Date.UTC(2026, 10, 10, 12);
     const clock: Clock = { now: () => t, sleep: async (ms) => void (t += ms) };
+    a.setClock(clock.now);
     const { summary } = await startRun({
       gateway: GATEWAY,
       issuer: `${GATEWAY}/sso/realms/platform`,
@@ -147,8 +169,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14', 'RUN-16', 'RUN-17', 'RUN-18']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-07', 'RUN-08', 'RUN-09', 'RUN-10', 'RUN-11', 'RUN-14', 'RUN-16', 'RUN-17', 'RUN-18']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-12', 'RUN-13']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });

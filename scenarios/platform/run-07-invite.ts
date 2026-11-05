@@ -1,4 +1,4 @@
-import { notYet, type Scenario } from '../../src/scenario.ts';
+import type { Scenario } from '../../src/scenario.ts';
 import { PATHS, type AuditEntry, type Status } from './shared.ts';
 
 type Invite = { method: string; sentTo?: string; sentAt?: string; expiresAt?: string; expired?: boolean; count?: number; error?: string };
@@ -27,8 +27,13 @@ export const invite: Scenario = {
   then: 'AUGUR mails them an invite that lasts 72 hours, with no one-time password in the answer; Admin shows them as invited; Activity records person.added by email and the resend; the one invited the time before is turned off.',
   cadence: { kind: 'every', minutes: 480 },
   needs: [{ as: 'admin', role: 'admin' }],
-  // PER-194's last part. When it merges, this becomes: available while Status says email works.
-  available: notYet('Inviting someone by email isn’t in AUGUR yet: adding someone still gives them a one-time password.', 'PER-194 (email invites)'),
+  // Without email there is no invite to send: adding someone then gives them a one-time password instead.
+  available: async (ctx) => {
+    const status = await ctx.parts.admin!.api.get<Status>(PATHS.status);
+    return status.ok && status.body.email?.state === 'ok'
+      ? { ok: true }
+      : { ok: false, why: 'Email isn’t working on this deployment, so nobody can be invited by email (Admin → Status).', whoCanChange: 'A deployment admin, with the SMTP_* settings (docs/deploy.md).' };
+  },
   run: async (ctx) => {
     const { persona, api } = ctx.parts.admin!;
     const before = ctx.state.invited as string | undefined;
@@ -36,9 +41,6 @@ export const invite: Scenario = {
       const off = await api.post(PATHS.leave(before), {});
       if (ctx.check('the person invited the time before is turned off', off.ok || off.status === 404, { actual: off.status })) delete ctx.state.invited;
     }
-    const status = await api.get<Status>(PATHS.status);
-    if (!ctx.check('Status says email can be sent', status.ok && status.body.email?.state === 'ok', { expected: 'ok', actual: status.body?.email })) return;
-
     // A new sample address each run, in the cast's own domain, so nobody real is ever mailed.
     const stamp = ctx.now().toISOString().replace(/\D/g, '').slice(0, 12);
     const email = `${ctx.cast.synthetic.usernamePrefix}invite-${stamp}@${ctx.cast.synthetic.emailDomain}`;
