@@ -18,6 +18,9 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
   ]);
   const roles: Record<string, string[]> = { 'p-1': ['editor', 'publisher'], 'p-2': ['editor'], 'p-3': [], 'p-4': ['admin'] };
   const audit: unknown[] = [];
+  // One app with one preview: on for chosen floors and the floors beneath them, else off.
+  let preview: { mode: string; floors?: string[]; chosen: boolean } = { mode: 'off', chosen: false };
+  const below = (floor: string, top: string) => floor === top || (top === 'f-1' && floor === 'f-1a');
   let org = { name: 'Org', timeZone: 'UTC', sender: { name: 'Org' } };
   let signingIn = '';
   const who = (h: Record<string, string>) => h.authorization?.replace('Bearer ', '') ?? '';
@@ -39,6 +42,16 @@ const augur = (o: { removalSticks?: boolean } = {}) => {
     'GET /api/registry/v1/manifest': (_b, h) => (h['x-workspace-id'] && !floorsOf(who(h)).some((f) => f.id === h['x-workspace-id']) ? { status: 403, body: { error: 'forbidden', message: 'You’re not on that floor.' } } : { body: [] }),
     'GET /api/events/v1/notifications': () => ({ body: [] }),
     'GET /api/events/v1/audit': () => ({ body: audit }),
+    'GET /api/registry/v1/feature-previews': (_b, h) => ({
+      body: { apps: [{ app: 'folio', name: 'Artifacts', previews: [{ id: 'board-view', name: 'Board view', mode: preview.mode, ended: false, on: preview.mode === 'floors' && !!preview.floors?.some((f) => below(h['x-workspace-id'] ?? '', f)) }] }] },
+    }),
+    'GET /api/registry/v1/apps/folio/feature-previews': () => ({ body: { defaultMode: 'off', ring: 'production', previews: [{ id: 'board-view', name: 'Board view', ...preview, ended: false, optedIn: 0 }] } }),
+    'PUT /api/registry/v1/apps/folio/feature-previews/board-view': (b, h) => {
+      const { mode, floors } = b as { mode: string | null; floors?: string[] };
+      preview = mode === null ? { mode: 'off', chosen: false } : { mode, floors, chosen: true };
+      audit.unshift({ id: `a${audit.length}`, at: new Date().toISOString(), actor: { id: who(h) }, action: 'app.preview-set', target: 'folio' });
+      return { body: {} };
+    },
     'GET /api/identity/v1/organisation': () => ({ body: org }),
     'PATCH /api/identity/v1/admin/organisation': (b, h) => {
       if (!roles[who(h)]?.includes('admin')) return { status: 403, body: { message: 'Only admins.' } };
@@ -93,8 +106,8 @@ describe('the platform scenarios in a dry run', () => {
   it('pass against an AUGUR that keeps its promises, and the waiting ones say what they wait on', async () => {
     const summary = await dry(augur());
     const outcome = (id: string) => Object.keys(summary.scenarios[id]?.outcomes ?? {});
-    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
-    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-11', 'RUN-12', 'RUN-13', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
+    for (const id of ['RUN-01', 'RUN-02', 'RUN-03', 'RUN-04', 'RUN-05', 'RUN-06', 'RUN-09', 'RUN-11']) expect([id, outcome(id)]).toEqual([id, ['passed']]);
+    for (const id of ['RUN-07', 'RUN-08', 'RUN-10', 'RUN-12', 'RUN-13', 'RUN-14']) expect([id, outcome(id)]).toEqual([id, ['not-available']]);
     expect(summary.ledger).toEqual([]);
     expect(summary.verdict.passed).toBe(true);
   });
