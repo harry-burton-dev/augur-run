@@ -22,17 +22,4 @@ export const pending: Scenario[] = [
     waitsOn: 'Inviting someone by email isn’t in AUGUR yet. Email (RUN-16) and Account (RUN-18) are, and are proved on their own.',
     issue: 'PER-194 (email invites)',
   }),
-  waiting({
-    id: 'RUN-12',
-    title: 'A failure alerts an absent admin',
-    goals: [23],
-    cuj: 4,
-    given: 'Staging running normally, with Grafana alerting and the mail relay.',
-    when: 'At 03:00 on the first night the operator stops one service (the fault drill), then starts it again.',
-    then: 'A notice and an email reach a deployment admin within 5 minutes, one per incident, with a recovery notice after.',
-    cadence: { kind: 'daily', atUtc: '03:00', graceMinutes: 10 },
-    needs: [{ as: 'admin', role: 'admin' }],
-    waitsOn: 'Alerts aren’t in AUGUR yet, and the drill needs the operator’s fault command.',
-    issue: 'PER-220',
-  }),
 ];

@@ -35,7 +35,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 19 | Design decisions recorded before the SDK 2.0 cut | Review | Decision register | Elsewhere | |
 | 20 | Every app shows the app frame layout; nothing is covered at tablet widths | Run | RUN-13 | Written | |
 | 22 | Settings schema matches compose, `.env.example` and docs; no deployment literals | CI | im-platform `check-settings` | Elsewhere | |
-| 23 | A deliberate fault alerts a deployment admin within 5 minutes, by notice and email (CUJ 4) | Run | RUN-12 | Waiting | |
+| 23 | A deliberate fault alerts a deployment admin within 5 minutes, by notice and email (CUJ 4) | Run and operator | RUN-12 sees the drill's part go down and come back and records the times; sample people are never deployment admins, so the operator records the notice and email against them | Written | |
 | 23 | Stopping Grafana, then the whole host, raises Backstage's late-report alert | Run (operator) | Recorded by the operator during the run | Elsewhere | |
 | 23, 24, 36 | Every service and app answers its health check all through the run | Run | RUN-05 | Written | |
 | 24, 36 | The 02:00 UTC backup runs each night of the run | Run | RUN-06 | Written | |
