@@ -61,16 +61,4 @@ export const pending: Scenario[] = [
     waitsOn: 'Alerts aren’t in AUGUR yet, and the drill needs the operator’s fault command.',
     issue: 'PER-220',
   }),
-  waiting({
-    id: 'RUN-14',
-    title: 'Activity shows before and after, and exports',
-    goals: [12],
-    given: 'Admin changes made during the run.',
-    when: 'An admin opens Activity and exports it.',
-    then: 'Each change shows what it was before and after, and the export is a CSV of the same rows.',
-    cadence: { kind: 'once', afterMinutes: 40 * 60 },
-    needs: [{ as: 'admin', role: 'admin' }],
-    waitsOn: 'Activity doesn’t keep before and after, or export, yet.',
-    issue: 'PER-180',
-  }),
 ];

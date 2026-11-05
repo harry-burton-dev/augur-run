@@ -7,6 +7,7 @@ export const PATHS = {
   manifest: '/api/registry/v1/manifest',
   notifications: '/api/events/v1/notifications',
   audit: '/api/events/v1/audit',
+  auditExport: '/api/events/v1/audit/export',
   organisation: '/api/identity/v1/organisation',
   adminOrganisation: '/api/identity/v1/admin/organisation',
   previews: '/api/registry/v1/feature-previews',

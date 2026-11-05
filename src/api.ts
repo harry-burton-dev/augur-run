@@ -31,13 +31,13 @@ export const personaApi = (o: {
 }) => {
   const base = o.gateway.replace(/\/$/, '');
   const fetchImpl = o.fetchImpl ?? fetch;
-  const call = async <T = unknown>(method: string, path: string, opts: { body?: unknown; floor?: string; raw?: BodyInit; type?: string } = {}): Promise<Answer<T>> => {
+  const call = async <T = unknown>(method: string, path: string, opts: { body?: unknown; floor?: string; raw?: BodyInit; type?: string; text?: boolean } = {}): Promise<Answer<T>> => {
     await o.limit();
     const trace = newTraceId();
     const headers: Record<string, string> = {
       authorization: `Bearer ${await o.token()}`,
       traceparent: `00-${trace}-${newTraceId().slice(0, 16)}-01`,
-      accept: 'application/json',
+      accept: opts.text ? '*/*' : 'application/json',
     };
     if (opts.floor) headers['x-workspace-id'] = opts.floor;
     if (opts.body !== undefined) headers['content-type'] = 'application/json';
@@ -53,7 +53,7 @@ export const personaApi = (o: {
         signal: AbortSignal.timeout(o.timeoutMs ?? 30_000),
       });
       status = res.status;
-      body = res.status === 204 ? undefined : await res.json().catch(() => undefined);
+      body = res.status === 204 ? undefined : opts.text && res.ok ? await res.text() : await res.json().catch(() => undefined);
     } catch (err) {
       // No answer at all (refused, reset or timed out) is status 0, so a scenario sees it as down.
       body = { error: 'no_answer', message: (err as Error).message };
@@ -69,6 +69,8 @@ export const personaApi = (o: {
     put: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string }) => call<T>('PUT', path, { ...opts, body }),
     patch: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string }) => call<T>('PATCH', path, { ...opts, body }),
     delete: <T = unknown>(path: string, opts?: { floor?: string }) => call<T>('DELETE', path, opts),
+    /** A file the gateway gives back, such as an export, as text. */
+    download: (path: string, opts?: { floor?: string }) => call<string>('GET', path, { ...opts, text: true }),
     upload: <T = unknown>(path: string, raw: BodyInit, type: string, opts?: { floor?: string }) => call<T>('POST', path, { ...opts, raw, type }),
   };
 };
