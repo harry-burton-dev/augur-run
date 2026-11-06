@@ -164,6 +164,8 @@ describe('how a scenario ends', () => {
       scenario('RUN-02', async () => {}),
       scenario('RUN-03', async (ctx) => (ctx.note('No floor apart.'), { ok: false, why: 'No floor one reaches and the other doesn’t.' })),
       scenario('RUN-04', checks(true)),
+      // A check made while asking doesn't make steps that check nothing a pass.
+      scenario('RUN-05', async () => {}, { available: async (ctx) => (ctx.check('Status can be read', true), { ok: true }) }),
     ]);
     const { summary } = await startRun(o);
     expect(Object.fromEntries(Object.entries(summary.scenarios).map(([k, v]) => [k, [v.outcomes, v.lastWhy]]))).toEqual({
@@ -171,6 +173,7 @@ describe('how a scenario ends', () => {
       'RUN-02': [{ 'not-available': 1 }, 'It ran no check, so it proved nothing this time.'],
       'RUN-03': [{ 'not-available': 1 }, 'No floor one reaches and the other doesn’t.'],
       'RUN-04': [{ passed: 1 }, undefined],
+      'RUN-05': [{ 'not-available': 1 }, 'It ran no check, so it proved nothing this time.'],
     });
     // A dry run says what it didn't prove.
     expect(summary.verdict.reason).not.toMatch(/Not proved/);

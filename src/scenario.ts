@@ -98,6 +98,7 @@ export const scenarioProblems = (list: Scenario[]): string[] => {
     else seen.add(s.id);
     if (!Array.isArray(s?.goals) || !s.goals.length) problems.push(`${name} names no goal it proves (\`goals\`).`);
     if (!Array.isArray(s?.needs) || !s.needs.length) problems.push(`${name} names no persona (\`needs\`): every scenario is something a person does.`);
+    else if (!s.needs.every((n) => n && typeof n === 'object' && typeof n.as === 'string')) problems.push(`${name} has a part in \`needs\` without a name (\`as\`).`);
     else if (new Set(s.needs.map((n) => n.as)).size !== s.needs.length) problems.push(`${name} names a part twice.`);
     if (typeof s?.run !== 'function') problems.push(`${name} has no \`run\` steps.`);
     if (!s?.cadence || !['once', 'every', 'daily'].includes(s.cadence.kind)) problems.push(`${name} says nothing about when it happens (\`cadence\`).`);
@@ -186,6 +187,8 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     const can = scenario.available ? await scenario.available(ctx) : { ok: true as const };
     // A check that failed while asking (Status didn't answer) is a failure, whatever the answer was.
     if (!can.ok) return done(failed ? 'failed' : 'not-available', why(can), who);
+    // Only the scenario's own steps prove it: checks made while asking don't count towards a pass.
+    checks = 0;
     const ran = await scenario.run(ctx);
     if (failed) return done('failed', undefined, who);
     if (ran && !ran.ok) return done('not-available', why(ran), who);

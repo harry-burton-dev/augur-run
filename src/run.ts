@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { limiter, personaApi, type Api } from './api.ts';
 import type { Browse } from './browser.ts';
-import { exportRun, openRecorder } from './evidence.ts';
+import { exportRun, openRecorder, readEvidence } from './evidence.ts';
 import { openLedger } from './ledger.ts';
 import { personasFrom, rng, type Persona } from './personas.ts';
 import { runScenario, scenarioProblems, type Scenario } from './scenario.ts';
@@ -160,7 +160,7 @@ export const startRun = async (o: RunOptions) => {
     if (clock.now() - releaseCheckedAt > 15 * MINUTE) lookAtRelease();
     return release;
   };
-  const watch = setInterval(() => releaseNow(), 15 * MINUTE);
+  const watch = setInterval(lookAtRelease, 15 * MINUTE);
   watch.unref();
 
   const byId = new Map(o.scenarios.map((s) => [s.id, s]));
@@ -246,6 +246,7 @@ export const startRun = async (o: RunOptions) => {
 export const reexport = (runDir: string) => {
   const meta = JSON.parse(readFileSync(join(runDir, 'meta.json'), 'utf8')) as Meta;
   // A run still going, or one whose process ended without a word, hasn't reached its end.
-  const stopped = meta.ended ? undefined : (meta.stopped ?? 'it hasn’t finished, or its process ended before it could say why.');
+  const ended = meta.ended ?? readEvidence(join(runDir, 'evidence.jsonl')).some((e) => e.type === 'note' && e.text === 'Run ended');
+  const stopped = ended ? undefined : (meta.stopped ?? 'it hasn’t finished, or its process ended before it could say why.');
   return exportRun({ run: meta.run, gateway: meta.gateway, mode: meta.mode, suiteCommit: meta.suiteCommit, outDir: meta.outDir, partial: meta.partial, stopped, evidencePath: join(runDir, 'evidence.jsonl'), ledger: openLedger(join(runDir, 'ledger.jsonl')).rows() });
 };

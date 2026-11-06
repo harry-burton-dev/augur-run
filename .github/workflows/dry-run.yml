@@ -19,18 +19,23 @@ on:
       release:
         description: The AUGUR release to run against, such as 0.17.1-dev.97 (default the newest, dev builds included)
         required: false
-concurrency:
-  group: dry-run-${{ github.ref }}
-  cancel-in-progress: true
 permissions:
   contents: read
+  # AUGUR's images, read with the job's own token: augur-run has read access in each package's settings.
+  packages: read
 jobs:
   dry-run:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'dry-run')
+    # Adding some other label to a pull request that has dry-run doesn't start it again.
+    if: github.event_name == 'workflow_dispatch' || (contains(github.event.pull_request.labels.*.name, 'dry-run') && (github.event.action != 'labeled' || github.event.label.name == 'dry-run'))
+    concurrency:
+      group: dry-run-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       # augur is public, so the job's own read-only token finds its releases and checks it out.
       - name: Which release
         id: release
@@ -66,15 +71,13 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       # The browser test runs here, where there is a browser; the pull request check skips it.
       - run: pnpm vitest run src/browser.test.ts
-      # Only if AUGUR's images aren't public: a classic token with read:packages and nothing else (GitHub's
-      # container registry takes no fine-grained token). It is given to this step alone.
-      - name: Sign in to read AUGUR's images
-        env:
-          READ_PACKAGES: ${{ secrets.AUGUR_READ_PACKAGES_TOKEN }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [ -z "$READ_PACKAGES" ]; then echo "No AUGUR_READ_PACKAGES_TOKEN secret: AUGUR's images are pulled without signing in." >&2; exit 0; fi
-          echo "$READ_PACKAGES" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      # The job's own token, read-only and gone when the job ends, as augur's Deploy test signs in. Docker
+      # keeps it on the runner, where the pull request's code can read it: that is why the run needs asking.
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
       - name: Fresh install, seeded, every scenario once
         env:
           LOCAL_TAG: ${{ steps.release.outputs.version }}
@@ -85,7 +88,6 @@ jobs:
       - name: The report
         if: always()
         run: |
-          docker logout ghcr.io >/dev/null 2>&1 || true
           report="${{ runner.temp }}/dry/runs/dry-run/report.md"
           if [ -f "$report" ]; then cat "$report" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
           # No report means the suite never ran or never finished, even if the install passed.

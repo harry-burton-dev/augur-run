@@ -2,7 +2,7 @@
 //   pnpm run-suite run --url <AUGUR> [--dry] [--hours 48] [--cast <file>] [--seed-ledger <file>] [--scenarios <module>]…
 //   pnpm run-suite ledger <run folder>                                     lists the ledger's rows
 //   pnpm run-suite ledger <run folder> classify <row> <class> --why <words> --by <name> [--kind <failure kind>]
-//   pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR> [--set-password]   prints an access token
+//   pnpm run-suite token --url <AUGUR> --username <admin> --password-env <VAR> [--set-password]   prints an admin's access token
 import { execFileSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -72,9 +72,9 @@ const run = async (a: Args) => {
   const browser = browserApprover({ executablePath: one(a, 'chromium') ?? process.env.AUGUR_RUN_CHROMIUM });
   // Stopping the run (Ctrl-C) or a crash exports what it has, marked as a run that didn't reach its end.
   const stop = new AbortController();
-  const signalled = (signal: string) => () => {
+  const signalled = (signal: string, code: number) => () => {
     stop.abort(`the operator stopped it (${signal}).`);
-    process.exit(130);
+    process.exit(code);
   };
   const crashed = (err: unknown) => {
     stop.abort(`it crashed: ${err instanceof Error ? err.message : String(err)}`);
@@ -82,8 +82,8 @@ const run = async (a: Args) => {
     process.exit(1);
   };
   const handlers = [
-    ['SIGINT', signalled('SIGINT')],
-    ['SIGTERM', signalled('SIGTERM')],
+    ['SIGINT', signalled('SIGINT', 130)],
+    ['SIGTERM', signalled('SIGTERM', 143)],
     ['uncaughtException', crashed],
     ['unhandledRejection', crashed],
   ] as const;
@@ -134,8 +134,9 @@ const ledger = (a: Args) => {
 };
 
 /**
- * Signs one person in and prints their access token, for a script such as the dry run that hands it to
- * `pnpm seed`. It goes only where sample data is allowed, as the run does. When the sign-in page asks for a
+ * Signs an admin of a sample deployment in and prints their access token, for a script such as the dry run
+ * that hands it to `pnpm seed`. It goes only where sample data is allowed, as the run does: Status says so,
+ * and only an admin can read it, so the check comes after the sign-in. When the sign-in page asks for a
  * new password (a one-time password), it sets one only with --set-password, and keeps it where the run
  * keeps its own, `<workdir>/<host>/credentials.json`, saying so: it is never chosen and then thrown away.
  */
@@ -153,9 +154,11 @@ export const tokenCommand = async (
   const path = join(one(a, 'workdir') ?? '.run', hostOf(gateway), 'credentials.json');
   const credentials = openCredentials(path);
   const browser = deps.approve ? undefined : browserApprover({ executablePath: one(a, 'chromium') ?? process.env.AUGUR_RUN_CHROMIUM });
+  const known = credentials.candidates(username, password);
   try {
     const t = await signIn({ issuer, username, credentials, temporaryPassword: password, approve: deps.approve ?? browser!.approve, fetchImpl, wait: deps.wait, allowNewPassword: one(a, 'set-password') === 'true' });
-    if (credentials.candidates(username)[0] !== password) err(`${username} chose a new password at this sign-in; it is kept in ${path}.\n`);
+    const worked = credentials.candidates(username)[0];
+    if (worked && !known.includes(worked)) err(`${username} chose a new password at this sign-in; it is kept in ${path}.\n`);
     // The guard: only where the deployment says sample data is allowed (the gateway's Status).
     const status = await fetchImpl(`${gateway}/api/gateway/v1/status`, { headers: { authorization: `Bearer ${t.access_token}`, accept: 'application/json' } });
     if (!status.ok) throw new RunRefused(`The gateway's Status answered ${status.status} to ${username}, so it can't be checked that sample data is allowed here.`);

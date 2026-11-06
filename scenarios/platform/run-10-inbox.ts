@@ -44,10 +44,8 @@ export const inbox: Scenario = {
     ctx.check('no Inbox item is also a notification', notes.ok && Array.isArray(notes.body) && !notes.body.some((n) => items.has(n.id)), { actual: notes.status });
 
     const item = teams!.find((i) => !i.redacted && !i.takenBy);
-    if (!item) {
-      ctx.note(`Nothing waiting on ${persona.key}’s teams can be taken now, so taking and giving back wasn’t tried.`);
-      return;
-    }
+    // Half the journey isn't a pass: the next run, or another person, may find a team item to take.
+    if (!item) return { ok: false, why: `Nothing waiting on ${persona.key}’s teams can be taken now, so taking and giving back wasn’t tried.` };
     const taken = await api.post<InboxItem>(PATHS.inboxStep(item.id, 'take'));
     if (!ctx.check(`${persona.key} takes a team item`, taken.ok, { actual: taken.status })) return;
     try {

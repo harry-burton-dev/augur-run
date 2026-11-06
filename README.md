@@ -65,9 +65,9 @@ once (`scripts/dry-run.sh`), about ten minutes. It runs a pull request's own cod
 runs only when someone asks: by hand from Actions, or by adding the `dry-run` label to a pull request that
 changes the suite (`src/`, `scenarios/`, `scripts/`, the lockfile). Without the label the check shows as
 skipped, never as passed. Its report is on the run's summary page, and the summary, report, ledger and
-evidence are kept as an artifact for 14 days. It needs no secret while AUGUR's images are public; if they
-aren't, the `AUGUR_READ_PACKAGES_TOKEN` secret holds a classic token with only `read:packages`, which only the
-step that signs Docker in sees.
+evidence are kept as an artifact for 14 days. It needs no secret: the job's own read-only token reads
+AUGUR's releases and images, once each image package gives augur-run read access (the package's settings,
+Manage Actions access).
 
 ## The ledger
 
@@ -112,8 +112,9 @@ the shape of `src/scenario.ts`. They are run with `--scenarios ../augur-folio/ru
 a row in [traceability.md](traceability.md). Scenario ids are given out here, so two apps never take the
 same one: take the next free `RUN-nn` in the table.
 
-`pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR>` signs one person in and prints an
-access token, for a script such as the dry run that hands it to `pnpm seed` (`AUGUR_TOKEN`). Like a run, it
-goes only where the deployment allows sample data. If the sign-in page asks for a new password (a one-time
+`pnpm run-suite token --url <AUGUR> --username <admin> --password-env <VAR>` signs an admin of a sample
+deployment in and prints their access token, for a script such as the dry run that hands it to `pnpm seed`
+(`AUGUR_TOKEN`). Like a run, it goes only where the deployment allows sample data; only an admin can read
+that on Status, so the check comes after the sign-in. If the sign-in page asks for a new password (a one-time
 password), it stops, unless `--set-password` lets it choose one; that password is kept in
 `.run/<host>/credentials.json` (or under `--workdir`), and the command says so.

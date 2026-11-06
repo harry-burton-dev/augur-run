@@ -10,7 +10,8 @@ type Added = { person: { id: string; username?: string; email?: string }; tempor
  * the leaver can do nothing more, and Activity says who did it and who was handed the work. A leaver never
  * comes back (identity refuses to turn their sign-in on again), so the leaver is a sample person the
  * scenario adds for the purpose, as RUN-07 does: the seed's cast stays whole for every other scenario and
- * for later runs. The leaver is removed with the deployment's other leavers when its retention ends.
+ * for later runs. The leaver is removed with the deployment's other leavers when its retention ends. They
+ * own nothing, so this proves the platform's part: each pillar's own run module checks handing work on.
  */
 export const leaver: Scenario = {
   id: 'RUN-08',
@@ -18,7 +19,7 @@ export const leaver: Scenario = {
   owner: 'platform',
   goals: [12],
   cuj: 3,
-  given: 'A sample person added for the purpose, who writes and has signed in, and someone in the cast who can take on their work.',
+  given: 'A sample person added for the purpose, who has signed in, and someone in the cast who can take on their work.',
   when: 'An admin runs the leaver flow on them, handing their work to the successor.',
   then: 'Within 5 minutes the leaver can no longer use AUGUR; Activity records person.left, by the admin, handing over to the successor.',
   cadence: { kind: 'once', afterMinutes: 24 * 60 },
@@ -30,9 +31,9 @@ export const leaver: Scenario = {
     const stamp = ctx.now().toISOString().replace(/\D/g, '').slice(0, 14);
     const username = `${ctx.cast.synthetic.usernamePrefix}leaver-${stamp}`;
     const email = `${username}@${ctx.cast.synthetic.emailDomain}`;
-    const added = await admin.api.post<Added>(PATHS.people, { username, firstName: 'Leaver', lastName: `Run ${stamp}`, email, roles: ['editor'], start: 'temporary-password' });
+    const added = await admin.api.post<Added>(PATHS.people, { username, firstName: 'Leaver', lastName: `Run ${stamp}`, email, start: 'temporary-password' });
     if (!ctx.check(`the admin adds ${username}, who will leave`, added.status === 201 && !!added.body.temporaryPassword, { expected: 201, actual: added.status })) return;
-    const persona: Persona = { key: `leaver-${stamp}`, username, name: `Leaver Run ${stamp}`, id: added.body.person.id, email, floors: [], roles: ['editor'], habits: ['reads', 'writes'], temporaryPassword: added.body.temporaryPassword };
+    const persona: Persona = { key: `leaver-${stamp}`, username, name: `Leaver Run ${stamp}`, id: added.body.person.id, email, floors: [], roles: [], habits: ['reads'], temporaryPassword: added.body.temporaryPassword };
     // The suite turns off only people the cast's marks say it made.
     if (!ctx.check('the leaver is a sample person', isSynthetic(ctx.cast, persona), { actual: username })) return;
     const gone = ctx.as(persona);
