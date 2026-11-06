@@ -18,7 +18,11 @@ export type Cadence =
   /** Every day at a UTC time, such as the 02:00 backup, checked `graceMinutes` after it is due. */
   | { kind: 'daily'; atUtc: string; graceMinutes?: number };
 
-/** Whether this deployment can do what the scenario needs. A "no" is not a failure: it says why. */
+/**
+ * Whether this deployment can do what the scenario needs. A "no" is only for something the release or the
+ * deployment lacks, said with why; a call that fails while asking is a failed check, never a "no". In the
+ * timed run a scenario that is never available raises a ledger row at the end, for a person to classify.
+ */
 export type Availability = { ok: true } | { ok: false; why: string; whoCanChange?: string; issue?: string };
 
 export type Part = { persona: Persona; api: Api };
@@ -73,7 +77,12 @@ export type Scenario = {
   /** What a failed check suggests for the ledger; a person decides. `failure` unless set. */
   suggests?: LedgerClass;
   available?: (ctx: ScenarioContext) => Promise<Availability>;
-  run: (ctx: ScenarioContext) => Promise<void>;
+  /**
+   * The steps and their checks. It passes only when it ran a check and none failed. It can answer a "no",
+   * like `available`, when it finds part way that it can't prove its point this time (such as no floor that
+   * one part reaches and the other doesn't).
+   */
+  run: (ctx: ScenarioContext) => Promise<void | Availability>;
 };
 
 export const ID = /^RUN-\d{2,}$/;
@@ -81,14 +90,18 @@ export const ID = /^RUN-\d{2,}$/;
 export const scenarioProblems = (list: Scenario[]): string[] => {
   const problems: string[] = [];
   const seen = new Set<string>();
-  for (const s of list) {
-    if (!ID.test(s.id)) problems.push(`"${s.id}" isn't a scenario id: use RUN- and two or more digits.`);
-    if (seen.has(s.id)) problems.push(`${s.id} is used by two scenarios.`);
-    seen.add(s.id);
-    if (!s.goals.length) problems.push(`${s.id} names no goal it proves.`);
-    if (!s.needs.length) problems.push(`${s.id} names no persona: every scenario is something a person does.`);
-    const parts = new Set(s.needs.map((n) => n.as));
-    if (parts.size !== s.needs.length) problems.push(`${s.id} names a part twice.`);
+  for (const s of list as Partial<Scenario>[]) {
+    // An app's module is read from another repository, so its shape is checked, not trusted.
+    const name = typeof s?.id === 'string' ? s.id : JSON.stringify(s?.id ?? null);
+    if (typeof s?.id !== 'string' || !ID.test(s.id)) problems.push(`${name} isn't a scenario id: use RUN- and two or more digits.`);
+    else if (seen.has(s.id)) problems.push(`${s.id} is used by two scenarios.`);
+    else seen.add(s.id);
+    if (!Array.isArray(s?.goals) || !s.goals.length) problems.push(`${name} names no goal it proves (\`goals\`).`);
+    if (!Array.isArray(s?.needs) || !s.needs.length) problems.push(`${name} names no persona (\`needs\`): every scenario is something a person does.`);
+    else if (new Set(s.needs.map((n) => n.as)).size !== s.needs.length) problems.push(`${name} names a part twice.`);
+    if (typeof s?.run !== 'function') problems.push(`${name} has no \`run\` steps.`);
+    if (!s?.cadence || !['once', 'every', 'daily'].includes(s.cadence.kind)) problems.push(`${name} says nothing about when it happens (\`cadence\`).`);
+    if (typeof s?.title !== 'string' || !s.title.trim()) problems.push(`${name} has no title.`);
   }
   return problems;
 };
@@ -127,6 +140,7 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
   const parts = Object.fromEntries(Object.entries(chosen).map(([as, persona]) => [as, { persona, api: deps.apiFor(persona, scenario.id) }]));
   const who = Object.values(chosen).map((p) => p.key);
   let failed = false;
+  let checks = 0;
   const open: Browsing[] = [];
   const ctx: ScenarioContext = {
     scenario,
@@ -158,6 +172,7 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     },
     note: (text, data) => void deps.evidence.note({ scenario: scenario.id, text, data }),
     check: (label, ok, detail = {}) => {
+      checks += 1;
       const e = deps.evidence.check({ scenario: scenario.id, check: label, ok, expected: detail.expected, actual: detail.actual, persona: who.join(',') });
       if (!ok) {
         failed = true;
@@ -167,10 +182,15 @@ export const runScenario = async (scenario: Scenario, deps: RunDeps): Promise<{ 
     },
   };
   try {
+    const why = (no: Extract<Availability, { ok: false }>) => [no.why, no.issue && `(${no.issue})`, no.whoCanChange].filter(Boolean).join(' ');
     const can = scenario.available ? await scenario.available(ctx) : { ok: true as const };
-    if (!can.ok) return done('not-available', [can.why, can.issue && `(${can.issue})`, can.whoCanChange].filter(Boolean).join(' '), who);
-    await scenario.run(ctx);
-    return done(failed ? 'failed' : 'passed', undefined, who);
+    // A check that failed while asking (Status didn't answer) is a failure, whatever the answer was.
+    if (!can.ok) return done(failed ? 'failed' : 'not-available', why(can), who);
+    const ran = await scenario.run(ctx);
+    if (failed) return done('failed', undefined, who);
+    if (ran && !ran.ok) return done('not-available', why(ran), who);
+    if (!checks) return done('not-available', 'It ran no check, so it proved nothing this time.', who);
+    return done('passed', undefined, who);
   } catch (err) {
     const message = (err as Error).message;
     deps.ledger.raise({ key: `${scenario.id}: stopped`, what: `${scenario.title} stopped part way: ${message}`, scenario: scenario.id, release: deps.release(), suggested: scenario.suggests ?? 'failure' });

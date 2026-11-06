@@ -25,7 +25,7 @@ export const faultDrill: Scenario = {
     if (ctx.dry) return { ok: false, why: 'The fault drill happens only in the timed run, at 03:00 UTC on its first night.' };
     if (ctx.state.drillSeenAt) return { ok: false, why: `The fault drill ran on the first night (${String(ctx.state.drillSeenAt)}); it isn’t repeated.` };
     const r = await ctx.parts.watcher!.api.get<Status>(PATHS.status);
-    if (!r.ok) return { ok: false, why: `Status can’t be read (${r.status}).` };
+    if (!ctx.check('Status can be read before the drill', r.ok, { actual: r.status })) return { ok: false, why: `Status can’t be read (${r.status}).` };
     const already = down(r.body);
     return already.length ? { ok: false, why: `${already.join(', ')} ${already.length === 1 ? 'is' : 'are'} already down before the drill, so the drill can’t be told apart.`, whoCanChange: 'The operator, by bringing the part back before 03:00 UTC.' } : { ok: true };
   },

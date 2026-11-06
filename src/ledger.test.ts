@@ -40,11 +40,20 @@ describe('the run ledger', () => {
     const l = openLedger(join(tempDir(), 'ledger.jsonl'));
     expect(verdict(l.rows())).toMatchObject({ passed: true });
     l.raise({ what: 'a' });
-    expect(verdict(l.rows())).toMatchObject({ passed: false, reason: expect.stringMatching(/need a class/) });
+    expect(verdict(l.rows())).toMatchObject({ passed: false, reason: expect.stringMatching(/needs? a class/) });
     l.classify('L-001', 'patch', 'Fixed in a patch.', 'me');
     expect(verdict(l.rows()).passed).toBe(true);
     l.raise({ what: 'b' });
     l.classify('L-002', 'failure', 'The alert never came.', 'me', 'missed-alert');
     expect(verdict(l.rows())).toMatchObject({ passed: false, reason: expect.stringMatching(/failure/) });
+  });
+
+  it('never passes a run that stopped early, ran only some scenarios, or proved nothing', () => {
+    expect(verdict([], { stopped: 'Stopped by the operator (SIGINT).' })).toMatchObject({ passed: false, reason: expect.stringMatching(/didn’t reach its end.*SIGINT/) });
+    expect(verdict([], { partial: 'only RUN-01' })).toMatchObject({ passed: false, reason: expect.stringMatching(/only RUN-01/) });
+    expect(verdict([], { proved: 0 })).toMatchObject({ passed: false, reason: expect.stringMatching(/No scenario passed/) });
+    expect(verdict([], { proved: 3 })).toMatchObject({ passed: true });
+    // A dry run says what it didn't prove, without failing for it.
+    expect(verdict([], { proved: 3, notProved: ['RUN-12'] })).toMatchObject({ passed: true, reason: expect.stringMatching(/RUN-12/) });
   });
 });

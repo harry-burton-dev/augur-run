@@ -19,7 +19,7 @@ export const inbox: Scenario = {
   needs: [{ as: 'owner', floors: 'own' }],
   available: async (ctx) => {
     const counts = await ctx.parts.owner!.api.get<InboxCounts>(PATHS.inboxCounts);
-    if (!counts.ok) return { ok: false, why: `The Inbox can’t be read (${counts.status}).` };
+    if (!ctx.check('the Inbox’s counts can be read', counts.ok, { actual: counts.status })) return { ok: false, why: `The Inbox can’t be read (${counts.status}).` };
     if (counts.body.you + counts.body.teams > 0) return { ok: true };
     return {
       ok: false,

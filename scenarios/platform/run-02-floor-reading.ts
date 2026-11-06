@@ -24,10 +24,8 @@ export const floorReading: Scenario = {
       ctx.check(`their own floor (${own.name}) answers`, here.ok, { actual: here.status });
     }
     const elsewhere = Object.entries(ctx.seeded.floors ?? {}).find(([, f]) => !mine.has(f.id));
-    if (!elsewhere) {
-      ctx.note(`${persona.key} can reach every seeded floor, so there is no other floor to be refused.`);
-      return;
-    }
+    // Only half the journey is proved, so it isn't passed: another person may be cast next time.
+    if (!elsewhere) return { ok: false, why: `${persona.key} can reach every seeded floor, so there is no other floor to be refused.` };
     const [, other] = elsewhere;
     const there = await api.get<{ message?: string }>(`${PATHS.manifest}?workspace=${encodeURIComponent(other.id)}`, { floor: other.id });
     ctx.check(`a floor they are not on (${other.name}) is refused`, there.status === 403, { expected: 403, actual: there.status });

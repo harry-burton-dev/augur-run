@@ -2,10 +2,8 @@
 //   pnpm run-suite run --url <AUGUR> [--dry] [--hours 48] [--cast <file>] [--seed-ledger <file>] [--scenarios <module>]…
 //   pnpm run-suite ledger <run folder>                                     lists the ledger's rows
 //   pnpm run-suite ledger <run folder> classify <row> <class> --why <words> --by <name> [--kind <failure kind>]
-//   pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR>   prints an access token
+//   pnpm run-suite token --url <AUGUR> --username <name> --password-env <VAR> [--set-password]   prints an access token
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { scenarios as platformScenarios } from '../scenarios/platform/index.ts';
@@ -13,8 +11,9 @@ import { browserApprover } from './browser.ts';
 import { CLASS_MEANING, CLASSES, FAILURE_KINDS, LedgerError, openLedger } from './ledger.ts';
 import { hostOf, reexport, startRun } from './run.ts';
 import type { Scenario } from './scenario.ts';
-import { openCredentials, signIn } from './signin.ts';
-import { RunRefused } from './synthetic.ts';
+import { openCredentials, signIn, type Approver } from './signin.ts';
+import { checkAllowed, RunRefused } from './synthetic.ts';
+import { readTraceability, writtenScenarios } from './traceability.ts';
 
 type Args = { _: string[]; flags: Record<string, string[]> };
 
@@ -54,12 +53,15 @@ const commit = () => {
   }
 };
 
-/** An app's scenarios: a module exporting `scenarios`, such as an app repository's run/index.ts. */
+/** An app's scenarios: a module exporting `scenarios`, such as an app repository's run/index.ts. Its shape is checked when the run starts. */
 const loadScenarios = async (path: string): Promise<Scenario[]> => {
   const mod = (await import(pathToFileURL(resolve(path)).href)) as { scenarios?: Scenario[] };
   if (!Array.isArray(mod.scenarios)) throw new RunRefused(`${path} exports no \`scenarios\` list.`);
   return mod.scenarios;
 };
+
+/** AUGUR's checkout beside this one, whose seed and cast a run uses by default. */
+const AUGUR_CHECKOUT = '../augur';
 
 const run = async (a: Args) => {
   const { gateway, issuer } = addressesOf(one(a, 'url'), one(a, 'issuer'));
@@ -68,12 +70,30 @@ const run = async (a: Args) => {
   const all = [...platformScenarios, ...extra].filter((s) => !only || only.includes(s.id));
   if (!all.length) throw new RunRefused('There are no scenarios to run.');
   const browser = browserApprover({ executablePath: one(a, 'chromium') ?? process.env.AUGUR_RUN_CHROMIUM });
+  // Stopping the run (Ctrl-C) or a crash exports what it has, marked as a run that didn't reach its end.
+  const stop = new AbortController();
+  const signalled = (signal: string) => () => {
+    stop.abort(`the operator stopped it (${signal}).`);
+    process.exit(130);
+  };
+  const crashed = (err: unknown) => {
+    stop.abort(`it crashed: ${err instanceof Error ? err.message : String(err)}`);
+    console.error(`✗ ${err instanceof Error ? err.stack : String(err)}`);
+    process.exit(1);
+  };
+  const handlers = [
+    ['SIGINT', signalled('SIGINT')],
+    ['SIGTERM', signalled('SIGTERM')],
+    ['uncaughtException', crashed],
+    ['unhandledRejection', crashed],
+  ] as const;
+  for (const [event, handler] of handlers) process.on(event, handler);
   try {
     const result = await startRun({
       gateway,
       issuer,
-      castPath: resolve(one(a, 'cast') ?? '../im-platform/scripts/seed/cast.json'),
-      seedLedgerPath: resolve(one(a, 'seed-ledger') ?? `../im-platform/.seed/${hostOf(gateway)}.json`),
+      castPath: resolve(one(a, 'cast') ?? `${AUGUR_CHECKOUT}/scripts/seed/cast.json`),
+      seedLedgerPath: resolve(one(a, 'seed-ledger') ?? `${AUGUR_CHECKOUT}/.seed/${hostOf(gateway)}.json`),
       scenarios: all,
       approve: browser.approve,
       browse: browser.browse,
@@ -85,9 +105,13 @@ const run = async (a: Args) => {
       outDir: one(a, 'out'),
       workDir: one(a, 'workdir'),
       suiteCommit: commit(),
+      partial: only ? `only ${only.join(', ')}` : undefined,
+      expected: writtenScenarios(readTraceability()),
+      signal: stop.signal,
     });
     return result.summary.verdict.passed ? 0 : 1;
   } finally {
+    for (const [event, handler] of handlers) process.off(event, handler);
     await browser.close();
   }
 };
@@ -109,22 +133,41 @@ const ledger = (a: Args) => {
   return 0;
 };
 
-const token = async (a: Args) => {
-  const { issuer } = addressesOf(one(a, 'url'), one(a, 'issuer'));
+/**
+ * Signs one person in and prints their access token, for a script such as the dry run that hands it to
+ * `pnpm seed`. It goes only where sample data is allowed, as the run does. When the sign-in page asks for a
+ * new password (a one-time password), it sets one only with --set-password, and keeps it where the run
+ * keeps its own, `<workdir>/<host>/credentials.json`, saying so: it is never chosen and then thrown away.
+ */
+export const tokenCommand = async (
+  a: Args,
+  deps: { approve?: Approver; fetchImpl?: typeof fetch; wait?: (ms: number) => Promise<void>; out?: (s: string) => void; err?: (s: string) => void } = {},
+) => {
+  const { gateway, issuer } = addressesOf(one(a, 'url'), one(a, 'issuer'));
   const username = need(a, 'username', 'who to sign in');
   const password = process.env[need(a, 'password-env', 'the environment variable that holds their password')];
   if (!password) throw new RunRefused('That environment variable is empty.');
-  const dir = mkdtempSync(join(tmpdir(), 'augur-run-'));
-  const browser = browserApprover({ executablePath: one(a, 'chromium') ?? process.env.AUGUR_RUN_CHROMIUM });
+  const out = deps.out ?? ((s: string) => void process.stdout.write(s));
+  const err = deps.err ?? ((s: string) => void process.stderr.write(s));
+  const fetchImpl = deps.fetchImpl ?? fetch;
+  const path = join(one(a, 'workdir') ?? '.run', hostOf(gateway), 'credentials.json');
+  const credentials = openCredentials(path);
+  const browser = deps.approve ? undefined : browserApprover({ executablePath: one(a, 'chromium') ?? process.env.AUGUR_RUN_CHROMIUM });
   try {
-    const t = await signIn({ issuer, username, credentials: openCredentials(join(dir, 'credentials.json')), temporaryPassword: password, approve: browser.approve });
-    process.stdout.write(`${t.access_token}\n`);
+    const t = await signIn({ issuer, username, credentials, temporaryPassword: password, approve: deps.approve ?? browser!.approve, fetchImpl, wait: deps.wait, allowNewPassword: one(a, 'set-password') === 'true' });
+    if (credentials.candidates(username)[0] !== password) err(`${username} chose a new password at this sign-in; it is kept in ${path}.\n`);
+    // The guard: only where the deployment says sample data is allowed (the gateway's Status).
+    const status = await fetchImpl(`${gateway}/api/gateway/v1/status`, { headers: { authorization: `Bearer ${t.access_token}`, accept: 'application/json' } });
+    if (!status.ok) throw new RunRefused(`The gateway's Status answered ${status.status} to ${username}, so it can't be checked that sample data is allowed here.`);
+    checkAllowed((await status.json()) as Parameters<typeof checkAllowed>[0]);
+    out(`${t.access_token}\n`);
     return 0;
   } finally {
-    await browser.close();
-    rmSync(dir, { recursive: true, force: true });
+    await browser?.close();
   }
 };
+
+const token = (a: Args) => tokenCommand(a);
 
 export const main = async (argv: string[]) => {
   const a = parseArgs(argv);

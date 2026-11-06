@@ -4,7 +4,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { verdict, type LedgerRow } from './ledger.ts';
+import { verdict, type LedgerRow, type RunFacts } from './ledger.ts';
 
 export type CallEvidence = {
   type: 'call';
@@ -164,10 +164,21 @@ export type RunSummary = ReturnType<typeof summarise> & {
   ledger: LedgerRow[];
 };
 
-/** Writes runs/<run>/summary.json and report.md: what a reader of the run needs, with no secret in it. */
-export const exportRun = (o: { run: string; gateway: string; mode: 'dry' | 'timeline'; evidencePath: string; ledger: LedgerRow[]; outDir: string; suiteCommit?: string }) => {
+/** Which scenarios passed at least once, and which never did. */
+export const proof = (scenarios: Record<string, ScenarioSummary>) => {
+  const ids = Object.keys(scenarios).sort((a, b) => a.localeCompare(b, 'en', { numeric: true }));
+  return { proved: ids.filter((id) => scenarios[id]!.outcomes.passed), notProved: ids.filter((id) => !scenarios[id]!.outcomes.passed) };
+};
+
+/**
+ * Writes runs/<run>/summary.json and report.md: what a reader of the run needs, with no secret in it.
+ * `stopped` says why a run didn't reach its end; `partial` that only some of its scenarios ran.
+ */
+export const exportRun = (o: { run: string; gateway: string; mode: 'dry' | 'timeline'; evidencePath: string; ledger: LedgerRow[]; outDir: string; suiteCommit?: string } & Pick<RunFacts, 'stopped' | 'partial'>) => {
   const raw = existsSync(o.evidencePath) ? readFileSync(o.evidencePath) : Buffer.from('');
   const evidence = readEvidence(o.evidencePath);
+  const summed = summarise(evidence);
+  const { proved, notProved } = proof(summed.scenarios);
   const summary: RunSummary = {
     schema: 'augur.run-summary/v1',
     run: o.run,
@@ -176,8 +187,8 @@ export const exportRun = (o: { run: string; gateway: string; mode: 'dry' | 'time
     mode: o.mode,
     evidenceSha256: createHash('sha256').update(raw).digest('hex'),
     evidenceLines: evidence.length,
-    ...summarise(evidence),
-    verdict: verdict(o.ledger),
+    ...summed,
+    verdict: verdict(o.ledger, { stopped: o.stopped, partial: o.partial, proved: proved.length, notProved: o.mode === 'dry' ? notProved : undefined }),
     ledger: o.ledger,
   };
   const dir = join(o.outDir, o.run);

@@ -60,6 +60,8 @@ describe.skipIf(!hasBrowser)('approving a code on the sign-in page', () => {
       const second = await browser.approve({ url: `${base}/device?user_code=Y`, userCode: 'Y', username: 't-ann', passwords: ['N3w-pass'], newPassword: 'unused' });
       expect(second).toEqual({ usedPassword: 'N3w-pass' });
       await expect(browser.approve({ url: `${base}/device?user_code=Z`, userCode: 'Z', username: 't-ann', passwords: ['nope'], newPassword: 'x' })).rejects.toThrow(/None of the passwords.*Invalid username or password/);
+      // Told not to, it stops at the new-password page instead of choosing one nobody else knows.
+      await expect(browser.approve({ url: `${base}/device?user_code=W`, userCode: 'W', username: 't-ann', passwords: ['temp'], newPassword: 'x', allowNewPassword: false })).rejects.toThrow(/asks t-ann to choose a new password.*--set-password/);
     } finally {
       await browser.close();
     }
