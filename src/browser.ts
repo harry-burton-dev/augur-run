@@ -50,6 +50,9 @@ export const approveOn = async (page: Page, o: Parameters<Approver>[0]): Promise
       await page.fill('#password', pw);
       await submit(page);
     } else if (step === 'new-password') {
+      if (o.allowNewPassword === false) {
+        throw new RunRefused(`AUGUR asks ${o.username} to choose a new password. The suite would set one that only its credentials file knows, so it stops here: pass --set-password to let it.`);
+      }
       await page.fill('#password-new', o.newPassword);
       await page.fill('#password-confirm', o.newPassword);
       await submit(page);

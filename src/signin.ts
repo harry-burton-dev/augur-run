@@ -10,7 +10,16 @@ import { RunRefused } from './synthetic.ts';
 export type Tokens = { access_token: string; refresh_token?: string; expires_in?: number };
 
 /** Approves a device code on the sign-in page as this person. Says which password worked. */
-export type Approver = (o: { url: string; userCode: string; username: string; passwords: string[]; newPassword: string; granted?: () => boolean }) => Promise<{ usedPassword: string }>;
+export type Approver = (o: {
+  url: string;
+  userCode: string;
+  username: string;
+  passwords: string[];
+  newPassword: string;
+  granted?: () => boolean;
+  /** `false` stops the walk when the page asks for a new password, rather than set one nobody else knows. */
+  allowNewPassword?: boolean;
+}) => Promise<{ usedPassword: string }>;
 
 export type Fetch = typeof fetch;
 
@@ -67,20 +76,22 @@ export const signIn = async (o: {
   approve: Approver;
   fetchImpl?: Fetch;
   wait?: (ms: number) => Promise<void>;
+  /** Whether the walk may choose a new password when the page asks for one (the run's personas: yes). */
+  allowNewPassword?: boolean;
 }): Promise<Tokens> => {
   const { issuer, clientId = 'platform-cli', username, credentials, approve, fetchImpl = fetch, wait = (ms) => new Promise((r) => setTimeout(r, ms)) } = o;
   const base = `${issuer.replace(/\/$/, '')}/protocol/openid-connect`;
   const passwords = credentials.candidates(username, o.temporaryPassword);
   if (!passwords.length) throw new RunRefused(`The run knows no password for ${username}: the seed's ledger has no one-time password for them, and the run hasn't signed them in before.`);
   const start = await fetchImpl(`${base}/auth/device`, form({ client_id: clientId, scope: 'openid' }));
-  if (!start.ok) throw new RunRefused(`The sign-in service won't sign anyone in from a script (${start.status}). Its realm needs the ${clientId} client (im-platform docs/upgrade.md, "Sample data, where you allow it").`);
+  if (!start.ok) throw new RunRefused(`The sign-in service won't sign anyone in from a script (${start.status}). Its realm needs the ${clientId} client (augur docs/upgrade.md, "Sample data, where you allow it").`);
   const code = (await start.json()) as { device_code: string; user_code: string; verification_uri: string; verification_uri_complete?: string; interval?: number; expires_in?: number };
   const newPassword = credentials.propose(username);
   // The page is walked while the token endpoint is asked, so the walk stops as soon as the code is granted,
   // whatever the last page looks like.
   let granted = false;
   let approval: { usedPassword: string } | Error | undefined;
-  const approving = approve({ url: code.verification_uri_complete ?? code.verification_uri, userCode: code.user_code, username, passwords, newPassword, granted: () => granted }).then(
+  const approving = approve({ url: code.verification_uri_complete ?? code.verification_uri, userCode: code.user_code, username, passwords, newPassword, granted: () => granted, allowNewPassword: o.allowNewPassword }).then(
     (r) => void (approval = r),
     (err: unknown) => void (approval = err instanceof Error ? err : new Error(String(err))),
   );

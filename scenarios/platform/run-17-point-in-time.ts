@@ -17,7 +17,13 @@ export const pointInTime: Scenario = {
   needs: [{ as: 'admin', role: 'admin' }],
   available: async (ctx) => {
     const r = await ctx.parts.admin!.api.get<Status>(PATHS.status);
-    if (!r.ok || !r.body.backups?.pointInTime) return { ok: false, why: 'This deployment’s Status doesn’t report point-in-time restore.', whoCanChange: 'A deployment admin, by upgrading past 0.18 and starting the backup container again (im-platform docs/deploy.md, Restore to a point in time).' };
+    if (!ctx.check('Status can be read', r.ok, { actual: r.status })) return { ok: false, why: `Status answered ${r.status}.` };
+    if (!r.body.backups?.pointInTime) {
+      // Point in time that Status reported earlier in the run and no longer does is a fault, not a missing part.
+      if (ctx.state.reported) ctx.check('Status still reports point-in-time restore, as it did earlier in the run', false);
+      return { ok: false, why: 'This deployment’s Status doesn’t report point-in-time restore.', whoCanChange: 'A deployment admin, by upgrading past 0.18 and starting the backup container again (augur docs/deploy.md, Restore to a point in time).' };
+    }
+    ctx.state.reported = true;
     return { ok: true };
   },
   run: async (ctx) => {

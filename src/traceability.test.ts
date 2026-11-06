@@ -1,30 +1,10 @@
 // traceability.md and the scenarios must agree: it is the run gate's checklist.
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { scenarios } from '../scenarios/platform/index.ts';
 import { scenarioProblems } from './scenario.ts';
+import { readTraceability, traceRows, writtenScenarios } from './traceability.ts';
 
-type Row = { goals: string[]; runs: string[]; status: string; app: boolean };
-
-/** "29, 30, 33a" or "35 to 38" → the goal numbers it covers. */
-const goalsIn = (cell: string) =>
-  cell.split(',').flatMap((part) => {
-    const range = part.trim().match(/^(\d+) to (\d+)$/);
-    if (!range) return [part.trim()];
-    const out: string[] = [];
-    for (let n = Number(range[1]); n <= Number(range[2]); n++) out.push(String(n));
-    return out;
-  });
-
-const rows = (): Row[] =>
-  readFileSync(new URL('../traceability.md', import.meta.url), 'utf8')
-    .split('\n')
-    .filter((l) => /^\| \d/.test(l))
-    .map((l) => {
-      const cells = l.split('|').map((c) => c.trim());
-      // A scenario an app owns lives in that app's repository, named here with its `run/` module.
-      return { goals: goalsIn(cells[1] ?? ''), runs: (cells[4] ?? '').match(/RUN-\d{2,}/g) ?? [], status: cells[5] ?? '', app: /`run\/` module/.test(cells[4] ?? '') };
-    });
+const rows = () => traceRows(readTraceability());
 
 describe('traceability.md', () => {
   it('has rows, each with a known status', () => {
@@ -57,6 +37,14 @@ describe('traceability.md', () => {
       }
     }
     expect(wrong).toEqual([]);
+  });
+});
+
+describe('what a full run must include', () => {
+  it('is every scenario in a Written row, the apps’ included', () => {
+    const written = writtenScenarios(readTraceability());
+    expect(written).toEqual(expect.arrayContaining(['RUN-01', 'RUN-08', 'RUN-15', 'RUN-19', 'RUN-20']));
+    for (const s of scenarios) expect(written).toContain(s.id);
   });
 });
 

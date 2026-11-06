@@ -28,11 +28,14 @@ export const invite: Scenario = {
   cadence: { kind: 'every', minutes: 480 },
   needs: [{ as: 'admin', role: 'admin' }],
   // Without email there is no invite to send: adding someone then gives them a one-time password instead.
+  // Email that is set up but failing is a fault, so the invite still runs and its checks say what broke.
   available: async (ctx) => {
     const status = await ctx.parts.admin!.api.get<Status>(PATHS.status);
-    return status.ok && status.body.email?.state === 'ok'
+    if (!ctx.check('Status can be read', status.ok, { actual: status.status })) return { ok: false, why: `Status answered ${status.status}.` };
+    const email = status.body.email?.state;
+    return email && email !== 'off'
       ? { ok: true }
-      : { ok: false, why: 'Email isn’t working on this deployment, so nobody can be invited by email (Admin → Status).', whoCanChange: 'A deployment admin, with the SMTP_* settings (docs/deploy.md).' };
+      : { ok: false, why: 'Email isn’t set up on this deployment, so nobody can be invited by email (Admin → Status).', whoCanChange: 'A deployment admin, with the SMTP_* settings (docs/deploy.md).' };
   },
   run: async (ctx) => {
     const { persona, api } = ctx.parts.admin!;

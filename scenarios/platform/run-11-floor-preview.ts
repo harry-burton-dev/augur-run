@@ -17,7 +17,7 @@ export const floorPreview: Scenario = {
   needs: [{ as: 'admin', role: 'admin' }, { as: 'on', floors: 'own', notSameAs: ['admin'] }, { as: 'off', floors: 'own', notSameAs: ['admin', 'on'] }],
   available: async (ctx) => {
     const r = await ctx.parts.admin!.api.get<PreviewsForMe>(PATHS.previews);
-    if (!r.ok) return { ok: false, why: `Feature previews can’t be read (${r.status}).` };
+    if (!ctx.check('feature previews can be read', r.ok, { actual: r.status })) return { ok: false, why: `Feature previews can’t be read (${r.status}).` };
     const offered = r.body.apps.some((a) => a.previews.some((p) => !p.ended));
     return offered ? { ok: true } : { ok: false, why: 'No app on this deployment offers a feature preview that hasn’t ended.', whoCanChange: 'An app team, by listing `previews` in its manifest.' };
   },
@@ -33,10 +33,8 @@ export const floorPreview: Scenario = {
     const [onReach, offReach] = await Promise.all([reach(on), reach(off)]);
     const onFloor = on.persona.floors.find((f) => f.id && onReach.has(f.id) && !offReach.has(f.id));
     const offFloor = off.persona.floors.find((f) => f.id && offReach.has(f.id) && !onReach.has(f.id));
-    if (!onFloor || !offFloor) {
-      ctx.note(`${on.persona.key} and ${off.persona.key} can reach each other’s floors, so there is no floor for one and not the other.`);
-      return;
-    }
+    // Not proved this time, not passed: another pair of people may be cast next time.
+    if (!onFloor || !offFloor) return { ok: false, why: `${on.persona.key} and ${off.persona.key} can reach each other’s floors, so there is no floor for one and not the other.` };
     const listed = await admin.api.get<PreviewsForMe>(PATHS.previews);
     const choice = listed.body.apps.flatMap((a) => a.previews.filter((p) => !p.ended).map((p) => ({ app: a.app, preview: p.id }))).at(0)!;
     const before = await admin.api.get<PreviewsAdmin>(PATHS.appPreviews(choice.app));

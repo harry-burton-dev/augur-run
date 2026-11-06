@@ -1,5 +1,5 @@
 // What makes a run synthetic, and keeps it off deployments where real people work. The cast is the seed's
-// (im-platform scripts/seed/cast.json, ADR 0056), read from its file, never copied here. The seed's ledger
+// (augur scripts/seed/cast.json, ADR 0056), read from its file, never copied here. The seed's ledger
 // says which sample people exist on this deployment, with their one-time passwords.
 import { existsSync, readFileSync } from 'node:fs';
 
@@ -44,7 +44,7 @@ export const castProblems = (cast: unknown): string[] => {
 };
 
 export const loadCast = (path: string): Cast => {
-  if (!existsSync(path)) throw new RunRefused(`There is no cast at ${path}. Pass --cast with the seed's cast file (im-platform scripts/seed/cast.json).`);
+  if (!existsSync(path)) throw new RunRefused(`There is no cast at ${path}. Pass --cast with the seed's cast file (augur scripts/seed/cast.json).`);
   const cast = JSON.parse(readFileSync(path, 'utf8')) as Cast;
   const problems = castProblems(cast);
   if (problems.length) throw new RunRefused(`${path} can't be used for a run:\n  - ${problems.join('\n  - ')}`);
@@ -54,7 +54,7 @@ export const loadCast = (path: string): Cast => {
 const sameDeployment = (a: string, b: string) => new URL(a).host === new URL(b).host;
 
 export const loadSeedLedger = (path: string, gateway: string): SeedLedger => {
-  if (!existsSync(path)) throw new RunRefused(`There is no seed ledger at ${path}. Run \`pnpm seed --url ${gateway}\` in im-platform first; it writes one.`);
+  if (!existsSync(path)) throw new RunRefused(`There is no seed ledger at ${path}. Run \`pnpm seed --url ${gateway}\` in augur first; it writes one.`);
   const ledger = JSON.parse(readFileSync(path, 'utf8')) as SeedLedger;
   if (ledger.schema !== 'augur.seed-ledger/v1') throw new RunRefused(`${path} isn't a seed ledger this suite reads (it says ${ledger.schema ?? 'nothing'}).`);
   if (!sameDeployment(ledger.gateway, gateway)) throw new RunRefused(`${path} is the seed ledger for ${ledger.gateway}, not ${gateway}.`);

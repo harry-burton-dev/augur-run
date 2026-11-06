@@ -64,9 +64,9 @@ describe('RUN-07, inviting by email', () => {
     expect(d.checks.filter((c) => !c.ok).map((c) => c.label)).toEqual(['no one-time password is handed back', 'the admin sends the invite again', 'Activity records the resend']);
   });
 
-  it('waits while email isn’t working, saying who can change that', async () => {
+  it('waits while email isn’t set up, saying who can change that', async () => {
     expect(await invite.available!(deployment().ctx)).toEqual({ ok: true });
-    const off = deployment({ email: 'attention' });
+    const off = deployment({ email: 'off' });
     expect(await invite.available!(off.ctx)).toMatchObject({ ok: false, whoCanChange: expect.stringContaining('SMTP_') });
   });
 });

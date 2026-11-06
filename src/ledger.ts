@@ -125,15 +125,38 @@ export const openLedger = (path: string, now: () => Date = () => new Date()) => 
 
 export type Verdict = { passed: boolean; failures: LedgerRow[]; unclassified: LedgerRow[]; allowed: LedgerRow[]; reason: string };
 
-/** Whether the ledger lets the run pass: no failure, and nothing left for a person to classify. */
-export const verdict = (rows: LedgerRow[]): Verdict => {
+/** What the verdict needs to know about the run itself, beyond its ledger. */
+export type RunFacts = {
+  /** Why the run stopped before its end (a crash, or the operator stopping it). Such a run never passes. */
+  stopped?: string;
+  /** Set when only some of the scenarios ran (`--only`), which a run that proves a release can't do. */
+  partial?: string;
+  /** How many scenarios passed at least once. A run where none did proved nothing. */
+  proved?: number;
+  /** A dry run's scenarios that never passed: said in the reason, not failed for (the timed run raises rows). */
+  notProved?: string[];
+};
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Whether the run passes (ADR 0050): it reached its end with every scenario in it, proved something, and
+ * its ledger has no failure and nothing left for a person to classify.
+ */
+export const verdict = (rows: LedgerRow[], facts: RunFacts = {}): Verdict => {
   const failures = rows.filter((r) => r.class === 'failure');
   const unclassified = rows.filter((r) => r.class === undefined);
   const allowed = rows.filter((r) => r.class !== undefined && r.class !== 'failure');
-  const reason = failures.length
-    ? `${failures.length} failure${failures.length > 1 ? 's' : ''} in the ledger (${failures.map((r) => r.id).join(', ')}): the run fails, and a new release needs a fresh run on a wiped server.`
-    : unclassified.length
-      ? `${unclassified.length} row${unclassified.length > 1 ? 's' : ''} still need a class (${unclassified.map((r) => r.id).join(', ')}).`
-      : `No failure in the ledger${allowed.length ? `; ${allowed.length} allowed row${allowed.length > 1 ? 's' : ''}` : ''}.`;
-  return { passed: !failures.length && !unclassified.length, failures, unclassified, allowed, reason };
+  const reasons: string[] = [];
+  if (facts.stopped) reasons.push(`The run didn’t reach its end: ${facts.stopped}`);
+  if (facts.partial) reasons.push(`Only part of the run's scenarios ran (${facts.partial}), so it can't prove a release.`);
+  if (failures.length) reasons.push(`${plural(failures.length, 'failure')} in the ledger (${failures.map((r) => r.id).join(', ')}): the run fails, and a new release needs a fresh run on a wiped server.`);
+  if (unclassified.length) reasons.push(`${plural(unclassified.length, 'row')} still need${unclassified.length === 1 ? 's' : ''} a class (${unclassified.map((r) => r.id).join(', ')}).`);
+  if (facts.proved === 0) reasons.push('No scenario passed, so the run proved nothing.');
+  const passed = !reasons.length;
+  if (passed) {
+    reasons.push(`No failure in the ledger${allowed.length ? `; ${plural(allowed.length, 'allowed row')}` : ''}.`);
+    if (facts.notProved?.length) reasons.push(`Not proved in this dry run: ${facts.notProved.join(', ')}.`);
+  }
+  return { passed, failures, unclassified, allowed, reason: reasons.join(' ') };
 };
