@@ -47,6 +47,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 27 | Staging install with an empty deviation log (CUJ 5) | Run (operator) | The deviation log | Elsewhere | |
 | 28 | A feature preview turned on for one floor reaches that floor's people within 5 minutes and nobody else's, with no release | Run | RUN-11 | Written | |
 | 29, 30, 36 | People read only where their floors allow | Run | RUN-02 | Written | |
+| 29, 30 | The knowledge graph shows people only what their floors see: their own floors answer, a floor they are not on is refused with a reason, and a lookup beyond their sight says only the kind of floor (CUJ 6) | Run | RUN-26 (reports not available on a release without the knowledge graph) | Written | |
 | 29, 33a | Binding events; Data Atlas shows what points at an entity (CUJ 6) | CI and run | CI: the service kit's `bindings` tests (`outboxBinding`, `readBinding`, PER-145). Run: RUN-19, in augur-mandate's `run/` module (a binding shows in Data Atlas and leaves it); RUN-20, in augur-atlas's `run/` module (the seed's entities are found and say what uses them) | Written | |
 | 30 | What is published up a floor is found and opened there, under its library's name, and nowhere else (CUJ 6) | Run | RUN-15, in augur-folio's `run/` module | Written | |
 | 34 | Zero im-platform PRs made for the reference app | Build gate | The reference app's gate script | Elsewhere | |
