@@ -19,5 +19,6 @@ import { emailSender } from './run-16-email.ts';
 import { pointInTime } from './run-17-point-in-time.ts';
 import { account } from './run-18-account.ts';
 import { noticeEmail } from './run-25-notice-email.ts';
+import { knowledgeSight } from './run-26-knowledge-sight.ts';
 
-export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, invite, leaver, organisationSettings, inbox, floorPreview, faultDrill, appFrame, activityExport, emailSender, pointInTime, account, noticeEmail, ...pending];
+export const scenarios: Scenario[] = [signIn, floorReading, adminActivity, steadyUse, statusHealthy, nightlyBackup, invite, leaver, organisationSettings, inbox, floorPreview, faultDrill, appFrame, activityExport, emailSender, pointInTime, account, noticeEmail, knowledgeSight, ...pending];

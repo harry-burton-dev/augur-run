@@ -31,7 +31,7 @@ export const personaApi = (o: {
 }) => {
   const base = o.gateway.replace(/\/$/, '');
   const fetchImpl = o.fetchImpl ?? fetch;
-  const call = async <T = unknown>(method: string, path: string, opts: { body?: unknown; floor?: string; raw?: BodyInit; type?: string; text?: boolean } = {}): Promise<Answer<T>> => {
+  const call = async <T = unknown>(method: string, path: string, opts: { body?: unknown; floor?: string; key?: string; raw?: BodyInit; type?: string; text?: boolean } = {}): Promise<Answer<T>> => {
     await o.limit();
     const trace = newTraceId();
     const headers: Record<string, string> = {
@@ -40,6 +40,8 @@ export const personaApi = (o: {
       accept: opts.text ? '*/*' : 'application/json',
     };
     if (opts.floor) headers['x-workspace-id'] = opts.floor;
+    // An action that changes something once, whatever retries the network makes, as the knowledge graph asks.
+    if (opts.key) headers['idempotency-key'] = opts.key;
     if (opts.body !== undefined) headers['content-type'] = 'application/json';
     if (opts.raw !== undefined && opts.type) headers['content-type'] = opts.type;
     const started = performance.now();
@@ -65,7 +67,7 @@ export const personaApi = (o: {
   return {
     persona: o.persona,
     get: <T = unknown>(path: string, opts?: { floor?: string }) => call<T>('GET', path, opts),
-    post: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string }) => call<T>('POST', path, { ...opts, body }),
+    post: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string; key?: string }) => call<T>('POST', path, { ...opts, body }),
     put: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string }) => call<T>('PUT', path, { ...opts, body }),
     patch: <T = unknown>(path: string, body?: unknown, opts?: { floor?: string }) => call<T>('PATCH', path, { ...opts, body }),
     delete: <T = unknown>(path: string, opts?: { floor?: string }) => call<T>('DELETE', path, opts),
