@@ -32,6 +32,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 12 | Activity keeps before and after, and exports to CSV and JSON lines with the same rows, itself recorded | Run | RUN-14 | Written | |
 | 13 | Organisation settings are read by everyone within 5 minutes, and audited (sign-in page and mail not yet checked) | Run | RUN-09 | Written | |
 | 14 | The Inbox holds stateful items, apart from notifications; its count matches its lists; a team item is taken and given back, kept in its history | Run | RUN-10 | Written | |
+| 14 | A document sent for review waits in its team lead's Inbox, and Issuing it closes the review (CUJ 6) | Run | RUN-28, in augur-folio's `run/` module (reports not available when no team the editor is on has a lead) | Written | |
 | 15 to 18 | Kit released on its own version; axe with no serious findings; picker search in place | CI | augur-kit and im-platform contract tests | Elsewhere | |
 | 19 | Design decisions recorded before the SDK 2.0 cut | Review | Decision register | Elsewhere | |
 | 20 | Every app shows the app frame layout; nothing is covered at tablet widths | Run | RUN-13 | Written | |
@@ -49,7 +50,10 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 29, 30, 36 | People read only where their floors allow | Run | RUN-02 | Written | |
 | 29, 30 | The knowledge graph shows people only what their floors see: their own floors answer, a floor they are not on is refused with a reason, and a lookup beyond their sight says only the kind of floor (CUJ 6) | Run | RUN-26 (reports not available on a release without the knowledge graph) | Written | |
 | 29, 33a | Binding events; Data Atlas shows what points at an entity (CUJ 6) | CI and run | CI: the service kit's `bindings` tests (`outboxBinding`, `readBinding`, PER-145). Run: RUN-19, in augur-mandate's `run/` module (a binding shows in Data Atlas and leaves it); RUN-20, in augur-atlas's `run/` module (the seed's entities are found and say what uses them) | Written | |
-| 30 | What is published up a floor is found and opened there, under its library's name, and nowhere else (CUJ 6) | Run | RUN-15, in augur-folio's `run/` module | Written | |
+| 29 | Anyone finds the organisation's guide by the start of its title's words, and reads it (CUJ 6) | Run | RUN-27, in augur-folio's `run/` module (reports not available when the seed added no organisation documents) | Written | |
+| 29, 30 | A document shared with one person opens to them to read only, and closes again when the share is taken back (CUJ 6) | Run | RUN-29, in augur-folio's `run/` module | Written | |
+| 29 | A new version in progress doesn't take the Issued version away, nor change its file (CUJ 6) | Run | RUN-30, in augur-folio's `run/` module | Written | |
+| 30 | What is published up a floor waits under From below there and opens at the one version it shows, and nowhere else (CUJ 6) | Run | RUN-15, in augur-folio's `run/` module | Written | |
 | 34 | Zero im-platform PRs made for the reference app | Build gate | The reference app's gate script | Elsewhere | |
 | 35 to 38 | The run ledger has no failure entry; the order of events holds | Run | The ledger (`pnpm run-suite ledger`) and the run's report in `runs/` | Elsewhere | |
 | 36 | The run carries the spec's load, so the watch and the alerts have counts | Run | RUN-04 | Written | |
