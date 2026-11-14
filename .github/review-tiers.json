@@ -1,0 +1,43 @@
+{
+  "about": "Review tiers by path (REVIEW.md), read by AUGUR's Review workflow. High if any path matches high (and not notHigh), Low if every path matches low (and not notLow), otherwise Medium. harryOk: the High paths that also wait for Harry's ok. Globs follow node:path matchesGlob.",
+  "high": [
+    "src/ledger.ts",
+    "src/run.ts",
+    "src/traceability.ts",
+    "src/evidence.ts",
+    "src/signin.ts",
+    "src/cli.ts",
+    "traceability.md",
+    ".gitignore",
+    ".github/**",
+    "REVIEW.md"
+  ],
+  "notHigh": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.mjs",
+    "**/*.testing.ts",
+    "**/README.md"
+  ],
+  "low": [
+    "**/*.md",
+    ".changeset/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test.mjs",
+    "**/*.stories.tsx"
+  ],
+  "notLow": [
+    "REVIEW.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "traceability.md"
+  ],
+  "harryOk": [
+    ".github/workflows/**",
+    ".github/review-tiers.json",
+    "REVIEW.md",
+    "src/ledger.ts"
+  ],
+  "deployTest": []
+}
