@@ -32,7 +32,7 @@ repository; read its AGENTS.md and ADRs 0050 and 0056 before changing what the s
 - The suite doesn't release: a run records the commit it ran from. So there are no changesets here.
 - `pnpm install`, then `pnpm lint`, `pnpm typecheck`, `pnpm test`. Nothing here needs a package token.
 - Before a pull request: REVIEW.md. The paths it changes set its tier, which says what it needs before it
-  merges (the description's sections, a `/code-review` run, Harry's ok on his paths); the Review check checks it.
+  merges (the description's sections, a `/code-review` run, high effort or more on what can't be undone); the Review check checks it.
 - Merge your own pull request once CI and the Review check are green, after merging fresh `origin/main` into it.
 - Nothing in the repository names the tool that wrote it: no assistant trailers on commits or attribution
   in pull requests, and no links to private chats.
