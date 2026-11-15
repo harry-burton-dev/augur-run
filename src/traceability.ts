@@ -2,7 +2,7 @@
 // timed run must include every scenario marked Written, its own and the apps' (README, "An app's scenarios").
 import { readFileSync } from 'node:fs';
 
-export type TraceRow = { goals: string[]; runs: string[]; status: string; app: boolean };
+export type TraceRow = { goals: string[]; runs: string[]; status: string; app: boolean; scenario: string; evidence: string };
 
 /** "29, 30, 33a" or "35 to 38" → the goal numbers it covers. */
 export const goalsIn = (cell: string) =>
@@ -21,10 +21,11 @@ export const traceRows = (markdown: string): TraceRow[] =>
     .map((l) => {
       const cells = l.split('|').map((c) => c.trim());
       // A scenario an app owns lives in that app's repository, named here with its `run/` module.
-      return { goals: goalsIn(cells[1] ?? ''), runs: (cells[4] ?? '').match(/RUN-\d{2,}/g) ?? [], status: cells[5] ?? '', app: /`run\/` module/.test(cells[4] ?? '') };
+      const scenario = cells[4] ?? '';
+      return { goals: goalsIn(cells[1] ?? ''), runs: scenario.match(/RUN-\d{2,}/g) ?? [], status: cells[5] ?? '', app: /`run\/` module/.test(scenario), scenario, evidence: cells[6] ?? '' };
     });
 
-/** The scenario ids a full run must include: every one in a Written row. */
+/** The scenario ids a full run must include: every one in a Written row. A row Waiting on an app (its app is out of AUGUR) isn't. */
 export const writtenScenarios = (markdown: string) => [...new Set(traceRows(markdown).filter((r) => r.status === 'Written').flatMap((r) => r.runs))];
 
 export const TRACEABILITY = new URL('../traceability.md', import.meta.url);
