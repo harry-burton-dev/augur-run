@@ -41,7 +41,7 @@ AUGUR's REVIEW.md has the whole of it. If Harry reads a record and would not hav
    last. Open each against `main` once the one before has merged. Each leaves `main` working on its own, and
    says where it sits: "Part of PER-x, 2 of 4".
 6. One still over 400 lines says in Risk: "Over 400 lines because …", and the reason says why it could not
-   be split: recorded or generated content, a rename, a migration that must move with its store. "It is one
+   be split: recorded or generated content, a rename, parts that can't work apart. "It is one
    feature" is not a reason.
 
 Don't run `/security-review` as a gate: its filter drops findings that matter here.
