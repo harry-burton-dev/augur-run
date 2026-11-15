@@ -40,33 +40,31 @@ describe('traceability.md', () => {
   });
 });
 
+// Artifacts (augur-folio), Data Atlas (augur-atlas) and Mandate (augur-mandate) were taken out of AUGUR to be
+// redesigned under the app contract, so no deployment can run their scenarios until each is installable again.
+// Take an app's repository out of this list, and set its rows back to Written, in the pull request that brings it back.
+const OUT = ['augur-folio', 'augur-atlas', 'augur-mandate'];
+
 describe('what a full run must include', () => {
   it('is every scenario in a Written row, the apps’ included', () => {
+    const md = ['| 1 | One | Run | RUN-01 | Written | |', "| 2 | Two | Run | RUN-31, in augur-foo's `run/` module | Written | |"].join('\n');
+    expect(writtenScenarios(md)).toEqual(['RUN-01', 'RUN-31']);
+    expect(traceRows(md)[1]).toMatchObject({ app: true, repo: 'augur-foo' });
     const written = writtenScenarios(readTraceability());
     expect(written).toEqual(expect.arrayContaining(['RUN-01', 'RUN-08']));
     for (const s of scenarios) expect(written).toContain(s.id);
   });
 
-  it('leaves out a scenario whose app is out of AUGUR, which waits on that app and says why', () => {
-    const md = [
-      '| 1 | One | Run | RUN-01 | Written | |',
-      "| 2 | Two | Run | RUN-15, in augur-folio's `run/` module | Waiting on an app | Artifacts was taken out of AUGUR to be redesigned |",
-    ].join('\n');
+  it('leaves out a scenario Waiting on an app', () => {
+    const md = ['| 1 | One | Run | RUN-01 | Written | |', "| 2 | Two | Run | RUN-15, in augur-folio's `run/` module | Waiting on an app | Out |"].join('\n');
     expect(writtenScenarios(md)).toEqual(['RUN-01']);
-    const wrong = rows()
-      .filter((r) => r.status === 'Waiting on an app')
-      .filter((r) => !r.app || !r.evidence)
-      .map((r) => r.runs.join(' '));
-    expect(wrong).toEqual([]);
   });
 
-  // Artifacts (augur-folio), Data Atlas (augur-atlas) and Mandate (augur-mandate) were taken out of AUGUR to be
-  // redesigned under the app contract, so no deployment can run their scenarios until each is installable again.
-  // Remove an app's repository from here, and its rows' status, in the pull request that makes it installable again.
-  const OUT = ['augur-folio', 'augur-atlas', 'augur-mandate'];
-  it('expects no scenario of an app taken out of AUGUR', () => {
-    const expected = rows().filter((r) => r.status === 'Written' && OUT.some((repo) => r.scenario.includes(repo)));
-    expect(expected.map((r) => r.runs.join(' '))).toEqual([]);
+  it('marks a row Waiting on an app exactly when its app is out of AUGUR, saying why and who brings it back', () => {
+    const wrong = rows()
+      .filter((r) => (r.status === 'Waiting on an app') !== (!!r.repo && OUT.includes(r.repo)) || (r.status === 'Waiting on an app' && !/Harry/.test(r.evidence)))
+      .map((r) => `${r.runs.join(' ')} (${r.repo ?? 'platform'}) is ${r.status}`);
+    expect(wrong).toEqual([]);
   });
 });
 

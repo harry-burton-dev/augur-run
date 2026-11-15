@@ -112,6 +112,11 @@ the shape of `src/scenario.ts`. They are run with `--scenarios ../augur-folio/ru
 a row in [traceability.md](traceability.md). Scenario ids are given out here, so two apps never take the
 same one: take the next free `RUN-nn` in the table.
 
+While an app is out of AUGUR (Artifacts, Data Atlas and Mandate are, being redesigned under the app contract),
+its rows say **Waiting on an app** and a full run doesn't expect them: don't pass its module to a timed run.
+The pull request that brings an app back sets its rows to Written and takes it off the list in
+`src/traceability.test.ts`.
+
 `pnpm run-suite token --url <AUGUR> --username <admin> --password-env <VAR>` signs an admin of a sample
 deployment in and prints their access token, for a script such as the dry run that hands it to `pnpm seed`
 (`AUGUR_TOKEN`). Like a run, it goes only where the deployment allows sample data; only an admin can read
