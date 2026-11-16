@@ -36,7 +36,7 @@ A scenario an app owns is named with its repository's `run/` module, and lives t
 | 14 | A document sent for review waits in its team lead's Inbox, and Issuing it closes the review (CUJ 6) | Run | RUN-28, in augur-folio's `run/` module (reports not available when no team the editor is on has a lead) | Waiting on an app | Artifacts was taken out of AUGUR to be redesigned under the app contract; it runs again once it is installable from the app feed, which Harry decides |
 | 15 to 18 | Kit released on its own version; axe with no serious findings; picker search in place | CI | augur-kit and im-platform contract tests | Elsewhere | |
 | 19 | Design decisions recorded before the SDK 2.0 cut | Review | Decision register | Elsewhere | |
-| 20 | Every app shows the app frame layout; nothing is covered at tablet widths | Run | RUN-13 | Written | |
+| 20 | Every app shows the app frame layout; nothing is covered at tablet widths, and at 320 px nothing in an app needs scrolling sideways (WCAG 2.2 Reflow; the shell's own parts: AUGUR's reflow contract test) | Run | RUN-13 | Written | |
 | 22 | Settings schema matches compose, `.env.example` and docs; no deployment literals | CI | im-platform `check-settings` | Elsewhere | |
 | 23 | A deliberate fault alerts a deployment admin within 5 minutes, by notice and email (CUJ 4) | Run and operator | RUN-12 sees the drill's part go down and come back and records the times; sample people are never deployment admins, so the operator records the notice and email against them | Written | |
 | 23 | Stopping Grafana, then the whole host, raises Backstage's late-report alert | Run (operator) | Recorded by the operator during the run | Elsewhere | |
