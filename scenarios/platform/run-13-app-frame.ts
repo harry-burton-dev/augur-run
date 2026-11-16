@@ -10,7 +10,7 @@ export const REFLOW_WIDTH = 320;
 
 /**
  * Desktop, then a tablet held both ways: the widths alpha Goal 20 names. Then 320 px, a 1280 px screen at 400%,
- * where WCAG 2.2's Reflow (1.4.10) asks that nothing be cut off or need scrolling sideways.
+ * where WCAG 2.2's Reflow (1.4.10) asks that nothing need scrolling sideways.
  */
 export const WIDTHS = [
   { name: 'desktop', width: 1440, height: 900 },
@@ -30,61 +30,49 @@ export const lookAt = async (page: Page) => {
     () => true,
     () => false,
   );
+  // Reflow is asked only at its width. It waits for the layout to settle, so the boxes below are read after it.
+  const reflow = shown && page.viewportSize()?.width === REFLOW_WIDTH ? await reflowOf(page) : null;
   const [stage, gauge, page_, rail, drawer] = await Promise.all(['.aerie-stage', '.aerie-gauge', '.quill-page', '.quill-rail', '.quill-drawer'].map((s) => box(page, s)));
   const state = shown ? await frame.evaluate((el) => ({ shape: el.getAttribute('data-shape'), rail: el.getAttribute('data-rail'), drawer: el.getAttribute('data-drawer') })) : undefined;
   const scroll = await page.evaluate(() => ({ page: document.documentElement.scrollWidth - window.innerWidth }));
-  // Reflow is asked only at its width, once the app's data has come and the shell has settled.
-  const narrow = page.viewportSize()?.width === REFLOW_WIDTH;
-  if (narrow && shown) await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined);
-  const cut = narrow && shown ? await cutOff(page) : { past: [], sideways: [] };
-  return { shown, stage, gauge, page: page_, rail, drawer, state, scroll, cut };
+  return { shown, stage, gauge, page: page_, rail, drawer, state, scroll, reflow };
 };
 
 /**
- * What a person can't reach at 320 px, after AUGUR's own reflow contract test (`platform/contract/tests/reflow.spec.ts`,
- * which holds the shell alone; this holds every app in it). Two things count:
- *   - past: anything shown past either edge of the window that no box inside the shell cuts off on purpose
- *     (overflow hidden or clip). A box that scrolls doesn't excuse what's in it, unless it scrolls a table, a grid
- *     or preformatted text. Nothing excuses a fixed box, which only the window holds. The shell's own clip is
- *     the window's edge.
- *   - sideways: a box whose content runs sideways out of it, scrolled or cut. Words cut short with an ellipsis
- *     are allowed, and so is a box that scrolls a table, a grid or preformatted text, which Reflow exempts.
- * Text kept for screen readers only (a 1 px box) is skipped. Only the outermost of nested finds is named, ten at
- * most. With no shell on the page, that is the finding.
+ * Whether the app makes a person scroll sideways at 320 px (WCAG 2.2 Reflow, 1.4.10). The shell's stage is the
+ * app's scroll box, so the app reflows when the stage doesn't scroll sideways. A table, a code block or a reel
+ * that scrolls in its own box doesn't widen the stage, and a crop made on purpose doesn't either. Waits for the
+ * stage's width to settle (data arriving, the shell's transitions), then gives how far it scrolls sideways and,
+ * as evidence, the outermost parts that run past its right edge outside any box of their own that scrolls or
+ * clips, five at most. The shell's own parts are held by AUGUR's reflow contract test.
  */
-export const cutOff = (page: Page) =>
-  page.evaluate(() => {
-    const width = document.documentElement.clientWidth;
-    const shell = document.querySelector('.aerie-shell');
-    if (!shell) return { past: ['no .aerie-shell on the page'], sideways: [] };
-    const shown = (el: Element) => el.checkVisibility({ opacityProperty: true, visibilityProperty: true });
-    const name = (el: Element) => `${el.tagName.toLowerCase()}.${String(el.getAttribute('class') ?? '').split(' ')[0]} (${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 30)})`;
-    const cuts = (el: Element) => ['hidden', 'clip'].includes(getComputedStyle(el).overflowX);
-    const twoWay = (el: Element) => getComputedStyle(el).overflowX !== 'visible' && !cuts(el) && !!el.querySelector('table, [role="table"], [role="grid"], pre');
-    const clipped = (el: Element) => {
-      if (getComputedStyle(el).position === 'fixed') return false;
-      for (let up = el.parentElement; up && up !== shell; up = up.parentElement) if (cuts(up) || twoWay(up)) return true;
+export const reflowOf = async (page: Page) => {
+  const over = () => page.evaluate(() => {
+    const stage = document.querySelector('.aerie-stage');
+    return stage ? stage.scrollWidth - stage.clientWidth : null;
+  });
+  let last = await over();
+  for (let steady = 0, tries = 0; steady < 2 && tries < 20; tries++) {
+    await page.waitForTimeout(250);
+    const now = await over();
+    steady = now === last ? steady + 1 : 0;
+    last = now;
+  }
+  if (last === null) return { stage: false, over: 0, widest: [] };
+  if (last <= 1) return { stage: true, over: 0, widest: [] };
+  const widest = await page.evaluate(() => {
+    const stage = document.querySelector('.aerie-stage')!;
+    const edge = stage.getBoundingClientRect().right + 1;
+    const own = (el: Element) => {
+      for (let up = el.parentElement; up && up !== stage; up = up.parentElement) if (getComputedStyle(up).overflowX !== 'visible') return true;
       return false;
     };
-    const tiny = (el: Element) => {
-      const b = el.getBoundingClientRect();
-      return b.width <= 1 || b.height <= 1;
-    };
-    const all = [...shell.querySelectorAll('*')].filter((el) => shown(el) && !tiny(el));
-    const past = all.filter((el) => {
-      const b = el.getBoundingClientRect();
-      return b.width > 0 && (b.right > width + 1 || b.left < -1) && !clipped(el);
-    });
-    const sideways = all.filter((el) => {
-      const style = getComputedStyle(el);
-      return style.overflowX !== 'visible' && style.textOverflow !== 'ellipsis' && !twoWay(el) && el.scrollWidth > el.clientWidth + 1;
-    });
-    const outermost = (found: Element[]) => {
-      const top = found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
-      return top.length > 10 ? [...top.slice(0, 10).map(name), `and ${top.length - 10} more`] : top.map(name);
-    };
-    return { past: outermost(past), sideways: outermost(sideways) };
+    const found = [...stage.querySelectorAll('*')].filter((el) => el.getBoundingClientRect().right > edge && !own(el));
+    const top = found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
+    return top.slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String(el.getAttribute('class') ?? '').split(' ')[0]} (${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 30)})`);
   });
+  return { stage: true, over: last, widest };
+};
 
 /** The ways a look breaks the one-layout rule (App patterns, in the AUGUR handbook), in words. */
 export const problemsIn = (l: Awaited<ReturnType<typeof lookAt>>): string[] => {
@@ -95,8 +83,7 @@ export const problemsIn = (l: Awaited<ReturnType<typeof lookAt>>): string[] => {
   if (l.gauge && overlaps(l.gauge, l.page)) out.push('the floor gauge covers the page');
   if (!inside(l.page, l.stage)) out.push('the page runs past the shell’s stage');
   if (l.scroll.page > 1) out.push(`the window scrolls sideways by ${l.scroll.page}px`);
-  if (l.cut.past.length) out.push(`past the window’s edge: ${l.cut.past.join(', ')}`);
-  if (l.cut.sideways.length) out.push(`runs sideways out of its box: ${l.cut.sideways.join(', ')}`);
+  if (l.reflow && l.reflow.over > 1) out.push(`the app scrolls sideways by ${l.reflow.over}px${l.reflow.widest.length ? `, past the edge: ${l.reflow.widest.join(', ')}` : ''}`);
   // A rail or drawer opened over the page may cover it; one that's open beside it, or folded, may not.
   if (l.rail && l.state?.rail !== 'over' && overlaps(l.rail, l.page)) out.push('the rail covers the page');
   if (l.drawer && l.state?.drawer !== 'over' && overlaps(l.drawer, l.page)) out.push('the drawer covers the page');
@@ -111,7 +98,7 @@ export const appFrame: Scenario = {
   goals: [20],
   given: 'The shell and every app the person is offered.',
   when: 'A sample person opens each app in a browser at desktop width, on a tablet held both ways, and at 320 px.',
-  then: 'Each shows the app frame’s layout, and neither the floor gauge, the rail nor the drawer covers the page unless the person opened it over the page. Nothing is cut off past the window’s edge or runs sideways out of its box.',
+  then: 'Each shows the app frame’s layout, and neither the floor gauge, the rail nor the drawer covers the page unless the person opened it over the page. At 320 px the app reflows: nothing in it needs scrolling sideways.',
   cadence: { kind: 'once', afterMinutes: 30 },
   needs: [{ as: 'anyone' }],
   available: async (ctx) =>

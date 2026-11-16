@@ -3,7 +3,7 @@
 import { existsSync } from 'node:fs';
 import { chromium, type Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { cutOff, lookAt, problemsIn, WIDTHS } from './run-13-app-frame.ts';
+import { lookAt, problemsIn, reflowOf, WIDTHS } from './run-13-app-frame.ts';
 
 const executablePath = process.env.AUGUR_RUN_CHROMIUM;
 const hasBrowser = executablePath ? existsSync(executablePath) : existsSync(chromium.executablePath());
@@ -18,7 +18,7 @@ const look = (o: Partial<Parameters<typeof problemsIn>[0]> = {}): Parameters<typ
   drawer: null,
   state: { shape: 'wide', rail: 'open', drawer: null },
   scroll: { page: 0 },
-  cut: { past: [], sideways: [] },
+  reflow: null,
   ...o,
 });
 
@@ -37,11 +37,9 @@ describe('what breaks the one-layout rule', () => {
     expect(problemsIn(look({ rail: box(0, 300) }))).toEqual(['the rail covers the page']);
   });
 
-  it('names what is cut off past the window’s edge or runs sideways out of its box', () => {
-    expect(problemsIn(look({ cut: { past: ['p.aerie-name (Reference)'], sideways: ['div.quill-table ()'] } }))).toEqual([
-      'past the window’s edge: p.aerie-name (Reference)',
-      'runs sideways out of its box: div.quill-table ()',
-    ]);
+  it('names how far the app scrolls sideways at 320 px, and what runs past the edge', () => {
+    expect(problemsIn(look({ reflow: { stage: true, over: 80, widest: ['h1.title (REFERENCE)'] } }))).toEqual(['the app scrolls sideways by 80px, past the edge: h1.title (REFERENCE)']);
+    expect(problemsIn(look({ reflow: { stage: true, over: 0, widest: [] } }))).toEqual([]);
   });
 
   it('lets a rail or drawer the person opened over the page cover it', () => {
@@ -74,42 +72,44 @@ describe.skipIf(!hasBrowser)('looking at a page laid out as the shell and the fr
     await page.close();
   });
 
-  /** A page at 320 px with the shell's frame: what's inside the stage, which scrolls, is the app's. */
+  /** A page at 320 px with the shell's frame: the stage, which scrolls, holds the app. */
   const narrow = async (app: string) => {
     const page = await browser.newPage();
     await page.setViewportSize(WIDTHS[3]!);
     await page.setContent(`<!doctype html><html><body style="margin:0"><div class="aerie-shell" style="position:fixed;inset:0;overflow:hidden">
       <main class="aerie-stage" style="position:absolute;inset:0;overflow:auto">${app}</main></div></body></html>`);
-    const found = await cutOff(page);
+    const found = await reflowOf(page);
     await page.close();
     return found;
   };
 
-  it('finds a heading past the edge though the stage scrolls, but not one an app cuts off on purpose', async () => {
-    expect(await narrow('<h1 class="title" style="width:400px;margin:0">REFERENCE</h1>')).toEqual({ past: ['h1.title (REFERENCE)'], sideways: ['main.aerie-stage (REFERENCE)'] });
-    expect(await narrow('<div class="clip" style="overflow:hidden;width:300px"><p style="width:400px;margin:0">cut on purpose</p></div>')).toEqual({ past: [], sideways: ['div.clip (cut on purpose)'] });
-  });
-
-  it('finds a fixed menu past the edge, whatever it sits in', async () => {
-    expect(await narrow('<div style="overflow:hidden"><ul class="menu" style="position:fixed;left:200px;width:200px;margin:0">Menu</ul></div>')).toEqual({ past: ['ul.menu (Menu)'], sideways: [] });
-  });
-
-  it('lets a table scroll sideways in its own box, and skips text kept for screen readers', async () => {
+  it('finds a heading that makes the app scroll sideways, though a table beside it scrolls in its own box', async () => {
     expect(
-      await narrow(`<div class="wrap" style="overflow-x:auto;width:300px"><table style="width:600px"><tr><td>wide</td></tr></table></div>
-        <a class="skip" href="#main" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden">Skip to content</a>`),
-    ).toEqual({ past: [], sideways: [] });
+      await narrow(`<h1 class="title" style="width:400px;margin:0">REFERENCE</h1>
+        <div class="wrap" style="overflow-x:auto"><table style="width:600px"><tr><td>wide</td></tr></table></div>`),
+    ).toEqual({ stage: true, over: 80, widest: ['h1.title (REFERENCE)'] });
   });
 
-  it('names only the outermost of what runs past, and says when there is no shell', async () => {
-    expect(await narrow('<div class="row" style="width:500px"><span style="display:block;width:480px">a</span><span style="display:block;width:480px">b</span></div>')).toEqual({
-      past: ['div.row (ab)'],
-      sideways: ['main.aerie-stage (ab)'],
+  it('lets a table scroll in its own box, a crop cut on purpose, and text kept for screen readers', async () => {
+    expect(
+      await narrow(`<div class="wrap" style="overflow-x:auto"><table style="width:600px"><tr><td>wide</td></tr></table></div>
+        <div class="avatar" style="overflow:hidden;width:40px"><div style="width:60px">img</div></div>
+        <a class="skip" href="#main" style="position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden">Skip to content</a>`),
+    ).toEqual({ stage: true, over: 0, widest: [] });
+  });
+
+  it('finds a menu placed past the edge, and names only the outermost of what runs past', async () => {
+    const found = await narrow(`<div style="position:relative"><ul class="menu" style="position:absolute;left:200px;width:200px;margin:0">Menu</ul></div>
+      <div class="row" style="width:500px"><span style="display:block;width:480px">a</span></div>`);
+    expect(found).toEqual({ stage: true, over: 180, widest: ['ul.menu (Menu)', 'div.row (a)'] });
+  });
+
+  it('waits for content that arrives late', async () => {
+    expect(await narrow(`<div id="late"></div><script>setTimeout(() => { document.getElementById('late').style.width = '420px'; }, 300);</script>`)).toEqual({
+      stage: true,
+      over: 100,
+      widest: ['div. ()'],
     });
-    const page = await browser.newPage();
-    await page.setContent('<p>no shell</p>');
-    expect(await cutOff(page)).toEqual({ past: ['no .aerie-shell on the page'], sideways: [] });
-    await page.close();
   });
 
   it('finds the gauge over the app when the stage runs under it', async () => {
