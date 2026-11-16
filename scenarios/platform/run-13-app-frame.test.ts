@@ -3,7 +3,7 @@
 import { existsSync } from 'node:fs';
 import { chromium, type Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lookAt, problemsIn, WIDTHS } from './run-13-app-frame.ts';
+import { cutOff, lookAt, problemsIn, WIDTHS } from './run-13-app-frame.ts';
 
 const executablePath = process.env.AUGUR_RUN_CHROMIUM;
 const hasBrowser = executablePath ? existsSync(executablePath) : existsSync(chromium.executablePath());
@@ -18,6 +18,7 @@ const look = (o: Partial<Parameters<typeof problemsIn>[0]> = {}): Parameters<typ
   drawer: null,
   state: { shape: 'wide', rail: 'open', drawer: null },
   scroll: { page: 0 },
+  cut: { past: [], sideways: [] },
   ...o,
 });
 
@@ -34,6 +35,13 @@ describe('what breaks the one-layout rule', () => {
       'the window scrolls sideways by 40px',
     ]);
     expect(problemsIn(look({ rail: box(0, 300) }))).toEqual(['the rail covers the page']);
+  });
+
+  it('names what is cut off past the window’s edge or runs sideways out of its box', () => {
+    expect(problemsIn(look({ cut: { past: ['p.aerie-name (Reference)'], sideways: ['div.quill-table ()'] } }))).toEqual([
+      'past the window’s edge: p.aerie-name (Reference)',
+      'runs sideways out of its box: div.quill-table ()',
+    ]);
   });
 
   it('lets a rail or drawer the person opened over the page cover it', () => {
@@ -63,6 +71,18 @@ describe.skipIf(!hasBrowser)('looking at a page laid out as the shell and the fr
       await page.setContent(shell({ lane: true }));
       expect([w.name, problemsIn(await lookAt(page))]).toEqual([w.name, []]);
     }
+    await page.close();
+  });
+
+  it('finds a title cut off past the edge, and a table that scrolls sideways, at 320 px', async () => {
+    const page = await browser.newPage();
+    await page.setViewportSize(WIDTHS[3]!);
+    await page.setContent(`<!doctype html><html><body style="margin:0"><div class="aerie-shell" style="position:fixed;inset:0;overflow:hidden">
+      <p class="aerie-name" style="position:absolute;left:10px;width:400px;margin:0">REFERENCE</p>
+      <div class="quill-table" style="position:absolute;top:40px;width:200px;overflow-x:auto"><div style="width:600px">wide</div></div>
+      <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden">kept for screen readers</span>
+    </div></body></html>`);
+    expect(await cutOff(page)).toEqual({ past: ['p.aerie-name (REFERENCE)'], sideways: ['div.quill-table (wide)'] });
     await page.close();
   });
 
