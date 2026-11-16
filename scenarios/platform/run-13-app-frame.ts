@@ -16,7 +16,7 @@ export const WIDTHS = [
   { name: 'desktop', width: 1440, height: 900 },
   { name: 'tablet, landscape', width: 1024, height: 768 },
   { name: 'tablet, portrait', width: 768, height: 1024 },
-  { name: '320 px (reflow)', width: REFLOW_WIDTH, height: 640 },
+  { name: '320 px', width: REFLOW_WIDTH, height: 640 },
 ];
 
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1 && a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
@@ -41,37 +41,52 @@ export const lookAt = async (page: Page) => {
 /**
  * Whether the app makes a person scroll sideways at 320 px (WCAG 2.2 Reflow, 1.4.10). The shell's stage is the
  * app's scroll box, so the app reflows when the stage doesn't scroll sideways. A table, a code block or a reel
- * that scrolls in its own box doesn't widen the stage, and a crop made on purpose doesn't either. Waits for the
- * stage's width to settle (data arriving, the shell's transitions), then gives how far it scrolls sideways and,
- * as evidence, the outermost parts that run past its right edge outside any box of their own that scrolls or
- * clips, five at most. The shell's own parts are held by AUGUR's reflow contract test.
+ * that scrolls in its own box doesn't widen the stage, and a crop made on purpose doesn't either. It waits until
+ * the stage's width has held for 2 s (data arriving, the shell's transitions; 10 s at most), then gives how far
+ * the stage scrolls sideways and, as evidence, the outermost parts that run past its inner edge, five at most.
+ * The evidence leaves out what sits in a box of its own that scrolls or clips; a part placed out of such a box
+ * (absolutely, by an ancestor further up) may then go unnamed, though the stage's scroll still counts it.
+ * The shell's own parts are held by AUGUR's reflow contract test.
  */
-export const reflowOf = async (page: Page) => {
-  const over = () => page.evaluate(() => {
-    const stage = document.querySelector('.aerie-stage');
-    return stage ? stage.scrollWidth - stage.clientWidth : null;
-  });
+export const reflowOf = async (page: Page): Promise<{ over: number; widest: string[] } | null> => {
+  const over = () =>
+    page.evaluate(() => {
+      const stage = document.querySelector('.aerie-stage');
+      return stage ? stage.scrollWidth - stage.clientWidth : null;
+    });
   let last = await over();
-  for (let steady = 0, tries = 0; steady < 2 && tries < 20; tries++) {
-    await page.waitForTimeout(250);
+  for (let steady = 0, tries = 0; steady < 4 && tries < 20; tries++) {
+    await page.waitForTimeout(500);
     const now = await over();
     steady = now === last ? steady + 1 : 0;
     last = now;
   }
-  if (last === null) return { stage: false, over: 0, widest: [] };
-  if (last <= 1) return { stage: true, over: 0, widest: [] };
+  if (last === null) return null;
+  if (last <= 1) return { over: 0, widest: [] };
   const widest = await page.evaluate(() => {
     const stage = document.querySelector('.aerie-stage')!;
-    const edge = stage.getBoundingClientRect().right + 1;
-    const own = (el: Element) => {
-      for (let up = el.parentElement; up && up !== stage; up = up.parentElement) if (getComputedStyle(up).overflowX !== 'visible') return true;
-      return false;
+    const edge = stage.getBoundingClientRect().left + stage.clientLeft + stage.clientWidth + 1;
+    const name = (el: Element) => {
+      const what = el.id ? `#${el.id}` : el.classList[0] ? `.${el.classList[0]}` : '';
+      const words = ((el as HTMLElement).innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 30);
+      return `${el.tagName.toLowerCase()}${what}${words ? ` (${words})` : ''}`;
     };
-    const found = [...stage.querySelectorAll('*')].filter((el) => el.getBoundingClientRect().right > edge && !own(el));
-    const top = found.filter((el) => !found.some((other) => other !== el && other.contains(el)));
-    return top.slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String(el.getAttribute('class') ?? '').split(' ')[0]} (${(el.getAttribute('aria-label') ?? el.textContent ?? '').trim().slice(0, 30)})`);
+    // One pass: an element past the edge is named and its subtree skipped, and so is a box that scrolls or clips.
+    const found: string[] = [];
+    const walk = document.createTreeWalker(stage, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: (node) => {
+        const el = node as Element;
+        if (el.getBoundingClientRect().right > edge) {
+          found.push(name(el));
+          return NodeFilter.FILTER_REJECT;
+        }
+        return getComputedStyle(el).overflowX !== 'visible' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    while (found.length < 5 && walk.nextNode());
+    return found;
   });
-  return { stage: true, over: last, widest };
+  return { over: last, widest };
 };
 
 /** The ways a look breaks the one-layout rule (App patterns, in the AUGUR handbook), in words. */
